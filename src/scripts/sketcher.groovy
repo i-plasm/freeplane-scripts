@@ -8,6 +8,8 @@ QuickSketch.run()
  * # Sketcher: Freeplane Script for quickly sketching drawings on a node.
  *
  * WEBSITE: https://github.com/i-plasm/freeplane-scripts
+ * 
+ * Discussion: https://github.com/freeplane/freeplane/discussions/1496
  *
  * Copyright (C) 2023 bbarbosa
  *
