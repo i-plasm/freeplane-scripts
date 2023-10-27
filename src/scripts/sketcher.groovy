@@ -225,7 +225,7 @@ public class QuickSketch {
               File file = new File(getExternalResource(nodeModel).getUri())
               JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
                   "<html><body width='400px'; style=\"font-size: 13px\">"
-                  + "CLICK 'OK' once you finish editing your sketch. Please save any changes beforehand."
+                  + "CLICK 'OK' once you finish editing your sketch. Please save any image changes beforehand."
                   + "</body></html>")
               // (Suggestion: If you don't see the editor yet, press 'alt + TAB' (Windows/Linux) or 'cmd
               // + TAB' (MacOS))
