@@ -1,11 +1,11 @@
-.gradle
+.gradle/
 .classpath
-.settings
+.settings/
 .project
-bin
-build
-lib
-res
+bin/
+build/
+lib/
+res/
 .#*
 *.temp
 *.bak
@@ -13,3 +13,4 @@ README-PANDOC.html
 README-STYLE.css
 Thumbs.db
 .DS_Store
+incubatingcode/

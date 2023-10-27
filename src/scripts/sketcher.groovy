@@ -1,27 +1,64 @@
 // @ExecutionModes({ON_SINGLE_NODE="/main_menu/i-plasm"})
 
+package scripts
+
+QuickSketch.run()
 
 /*
- * https://github.com/i-plasm/freeplane-scripts 
- * 
  * Sketcher: Freeplane Script for quickly sketching drawings on a node.
+ *
+ * WEBSITE: https://github.com/i-plasm/freeplane-scripts
+ *
+ * Copyright (C) 2023 bbarbosa
+ *
+ * This program is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+ * even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this program. If
+ * not, see <https://www.gnu.org/licenses/>.
+ *
+ * ---------
+ * 
  * 
  * Select a node, call the script and a new blank image or an existing one will be open in a
  * external image editor. Changes to the image will be refreshed in your mindmap.
  * 
  * Script location: 'i-plasm -> Sketcher'
  * 
- * You can specify the viewer for editing your image by setting a environment variable. Call this
- * variable 'sketcher' (lowercase) and specify the binary in its value. If your viewer can be
- * understood by a short command, you may use that. For instance, for Microsoft Paint, you can set
- * the value to simply: 'mspaint'. But if your environment does not have such command, then you must
- * specify the full path to the binary. For instance, a GIMP 2.10 installation in Windows may be:
- * 'C:\Program Files\GIMP 2\bin\gimp-2.10.exe'.
+ * ---------
  * 
- * AFTER SETTING THE ENVIRONMENT VARIABLE YOU MUST RESTART FREEPLANE!
+ * The external viewer
  * 
- * If the 'sketcher' environment variable is not specified or can not be successfully used, then the
- * script will open the image in the default image viewer (or in the case of Windows, in Paint).
+ * You may or may not specify a viewer
+ * 
+ * If the viewer is not specified or can not be successfully used, then the script will open the
+ * image in the default image viewer (or in the case of Windows, in Paint).
+ * 
+ * If you'd like to specify the viewer, follow these steps:
+ * 
+ * 1) In your Freeplane 'scripts' directory, Create a file named "sketcher.txt" (lowercase).
+ * 
+ * 2) inside the "sketcher.txt" indicate the binary/command to your viewer. For instance, for
+ * Microsoft Paint, the command is: 'mspaint'. But if your environment does not have such command,
+ * then you must specify the full path to the binary. For instance, the GIMP 2.10 binary in Windows
+ * might look like 'C:\Program Files\GIMP 2\bin\gimp-2.10.exe', and in MacOS it might look like
+ * '/Applications/Gimp-2.10.app/Contents/MacOS/gimp' (that said, on MacOS, if GIMP is the desired
+ * viewer, it seems it is best to NOT specify the binary in the 'sketcher.txt' file, but rather to
+ * set all .PNG files to be opened with GIMP. To do so go to Finder, right click any PNG file,
+ * select "Get info" and there in the "Open with" section select GIMP. Then press the
+ * "Change all..." button. At least on the MacOS I tested, this was the only way to have the sketch
+ * images open in a existing GIMP instance, not having to launch a new GIMP every time).
+ * 
+ * RESPECT LOWER AND UPPERCASES!
+ * 
+ * 3) AFTER CREATING THE FILE "sketcher.txt" FOR THE FIRST TIME, RESTART FREEPLANE.
+ * 
+ * ---------
  * 
  * The following script permissions are required (set it in Preferences -> Plug-ins): 1- Permit File
  * read; 2- Permit File write; 3- Permit to execute other applications
@@ -43,11 +80,12 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.stream.Collectors
 import javax.imageio.ImageIO
 import javax.swing.JOptionPane
 import org.freeplane.api.Node
+import org.freeplane.core.resources.ResourceController
 import org.freeplane.core.ui.components.UITools
-import org.freeplane.core.util.Compat
 import org.freeplane.core.util.Hyperlink
 import org.freeplane.features.map.NodeModel
 import org.freeplane.features.mode.Controller
@@ -57,15 +95,24 @@ import org.freeplane.view.swing.features.filepreview.ExternalResource
 import org.freeplane.view.swing.features.filepreview.ViewerController
 import org.freeplane.view.swing.features.progress.mindmapmode.ProgressIcons
 
-QuickSketch.run()
 
 public class QuickSketch {
 
-  public static String editorBinary = System.getenv().get("sketcher")
+  public static String editorBinary = null
   public static final String DEFAULT_WINDOWS_EDITOR = "mspaint"
   // public static boolean shouldMonitorExtProcess = false;
 
   public static void run() {
+    String userDir = ResourceController.getResourceController().getFreeplaneUserDirectory()
+    try {
+      List<String> lines = Files.readAllLines(Paths.get(userDir, "scripts", "sketcher.txt"))
+      lines = lines.stream().filter{it -> !it.trim().equals("")}.collect(Collectors.toList())
+      if (lines.size() > 0) {
+        editorBinary = lines.get(0)
+      }
+    } catch (IOException e1) {
+    }
+
     File file = null
 
     BufferedImage img = new BufferedImage(400, 400, BufferedImage.TYPE_INT_ARGB)
@@ -73,7 +120,6 @@ public class QuickSketch {
     g2d.setColor(Color.WHITE)
     g2d.fillRect(0, 0, 400, 400)
 
-    // String userDir = ResourceController.getResourceController().getFreeplaneUserDirectory();
     File mapFile = Controller.getCurrentController().getMap().getFile()
     if (mapFile == null) {
       JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
@@ -113,27 +159,20 @@ public class QuickSketch {
       // If the node already has an image, this will refresh it. Otherwise, it will add a blank one.
       addExtImage(file, selectedNodeModel)
 
-      UITools.getFrame().requestFocusInWindow()
       Process process = null
       try {
         process = openImageInEditor(file, editorBinary)
       } catch (IOException e) {
         // shouldMonitorExtProcess = false;
-        if (Compat.isWindowsOS()) {
-          process = openImageInEditor(file, DEFAULT_WINDOWS_EDITOR)
-          // e.printStackTrace();
-        } else {
-          UrlManager urlManager =
-              Controller.getCurrentModeController().getExtension(UrlManager.class)
-          urlManager.loadHyperlink(new Hyperlink(file.toURI()))
-        }
-      }
-      if (process == null) {
-        return
+        // e.printStackTrace();
+        System.out.println("SKETCHER_WARNING: The Image could not be open in the indicated editor '"
+            + editorBinary + "'" + ". MESSAGE: " + e.getMessage())
+        UrlManager urlManager =
+            Controller.getCurrentModeController().getExtension(UrlManager.class)
+        urlManager.loadHyperlink(new Hyperlink(file.toURI()))
       }
 
-      Executors.newScheduledThreadPool(1).schedule(new RefreshRunnable(selectedNodeModel), 5,
-          TimeUnit.SECONDS)
+      showRefreshPrompt(selectedNodeModel)
     } catch (IOException e) {
       e.printStackTrace()
       JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
@@ -141,6 +180,12 @@ public class QuickSketch {
     }
 
     // System.out.println(file.toString());
+  }
+
+
+  private static void showRefreshPrompt(NodeModel selectedNodeModel) {
+    Executors.newScheduledThreadPool(1).schedule(new RefreshRunnable(selectedNodeModel), 0,
+        TimeUnit.SECONDS)
   }
 
 
@@ -160,7 +205,11 @@ public class QuickSketch {
             public void run() {
               File file = new File(getExternalResource(nodeModel).getUri())
               JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
-                  "Click 'OK' if you finished editing your skectch. Please save any changes beforehand.")
+                  "<html><body width='400px'; style=\"font-size: 13px\">"
+                  + "CLICK 'OK' once you finish editing your skectch. Please save any changes beforehand."
+                  + "</body></html>")
+              // (Suggestion: If you don't see the editor yet, press 'alt + TAB' (Windows/Linux) or 'cmd
+              // + TAB' (MacOS))
               addExtImage(file, nodeModel)
             }
           })
@@ -172,7 +221,7 @@ public class QuickSketch {
     Process process = null
     Runtime runTime = Runtime.getRuntime()
     String[] cmd = [
-      imageEditor + " ",
+      imageEditor,
       file.toString()
     ]
     process = runTime.exec(cmd)
@@ -204,7 +253,4 @@ public class QuickSketch {
     ProgressIcons.updateExtendedProgressIcons(node, input.getName())
     return preview
   }
-}                   
-                  
-                  
-                                           
+}
