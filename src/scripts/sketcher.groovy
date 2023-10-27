@@ -7,7 +7,7 @@ QuickSketch.run()
 /*
  * # Sketcher: Freeplane Script for quickly sketching drawings on a node.
  *
- * WEBSITE: https://github.com/i-plasm/freeplane-scripts
+ * Github: https://github.com/i-plasm/freeplane-scripts
  * 
  * Discussion: https://github.com/freeplane/freeplane/discussions/1496
  *
@@ -66,9 +66,9 @@ QuickSketch.run()
  * 
  * 4) TIP: TO INDICATE THAT YOU PREFER TO USE THE SYSTEM-ASSOCIATED APPLICATION, WRITE 'system' ON
  * THE FIRST LINE OF 'sketcher.txt'. ANOTHER FEATURE IS YOU CAN KEEP AS MANY LINES AS YOU WANT IN
- * THE 'sketcher.txt' FILE, EACH INDICATING A VIEWER BINARY. THE KEY THING IS TO REMEMBER THAT THE
- * FIRST NON-BLANK LINE OF THE 'sketcher.txt' FILE WILL BE TAKEN AS YOUR CONFIGURATION OF CHOICE.
- * YOU CAN KEEP THE REST OF LINES FOR EASY REFERENCE IN CASE YOU SWITCH BACK AND FORTH.
+ * THE 'sketcher.txt' FILE, EACH INDICATING A VIEWER BINARY. THE KEY IS TO REMEMBER THAT THE FIRST
+ * NON-BLANK LINE OF THE 'sketcher.txt' FILE WILL BE TAKEN AS YOUR CONFIGURATION OF CHOICE. YOU CAN
+ * KEEP THE REST OF LINES FOR EASY REFERENCE IN CASE YOU SWITCH BACK AND FORTH.
  * 
  * ---------
  * 
@@ -115,7 +115,7 @@ import org.freeplane.view.swing.features.progress.mindmapmode.ProgressIcons
 
 public class QuickSketch {
 
-  public static String editorBinary = ""
+  private static String editorBinary = ""
   public static final String DEFAULT_WINDOWS_EDITOR = "mspaint"
   public static final String SYSTEM_ASSOCIATED_KEY = "system"
   // public static boolean shouldMonitorExtProcess = false;
