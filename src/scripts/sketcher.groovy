@@ -142,7 +142,7 @@ public class QuickSketch {
     File mapFile = Controller.getCurrentController().getMap().getFile()
     if (mapFile == null) {
       JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
-          "It seems the currently focused map has never been saved. Please save it in order to use QuickSketch.")
+          "It seems the currently focused map has never been saved. Please save it in order to use Sketcher.")
       return
     }
 
