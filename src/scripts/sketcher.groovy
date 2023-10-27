@@ -5,7 +5,7 @@ package scripts
 QuickSketch.run()
 
 /*
- * Sketcher: Freeplane Script for quickly sketching drawings on a node.
+ * # Sketcher: Freeplane Script for quickly sketching drawings on a node.
  *
  * WEBSITE: https://github.com/i-plasm/freeplane-scripts
  *
@@ -24,6 +24,9 @@ QuickSketch.run()
  *
  * ---------
  * 
+ * ## Generalities
+ * 
+ * Sketcher is a Freeplane Script for quickly sketching drawings on a node.
  * 
  * Select a node, call the script and a new blank image or an existing one will be open in a
  * external image editor. Changes to the image will be refreshed in your mindmap.
@@ -32,36 +35,49 @@ QuickSketch.run()
  * 
  * ---------
  * 
- * The external viewer
+ * ## The external viewer
  * 
  * You may or may not specify a viewer
  * 
  * If the viewer is not specified or can not be successfully used, then the script will open the
- * image in the default image viewer (or in the case of Windows, in Paint).
+ * image in the default image viewer.
  * 
  * If you'd like to specify the viewer, follow these steps:
  * 
  * 1) In your Freeplane 'scripts' directory, Create a file named "sketcher.txt" (lowercase).
  * 
- * 2) inside the "sketcher.txt" indicate the binary/command to your viewer. For instance, for
- * Microsoft Paint, the command is: 'mspaint'. But if your environment does not have such command,
- * then you must specify the full path to the binary. For instance, the GIMP 2.10 binary in Windows
- * might look like 'C:\Program Files\GIMP 2\bin\gimp-2.10.exe', and in MacOS it might look like
- * '/Applications/Gimp-2.10.app/Contents/MacOS/gimp' (that said, on MacOS, if GIMP is the desired
- * viewer, it seems it is best to NOT specify the binary in the 'sketcher.txt' file, but rather to
- * set all .PNG files to be opened with GIMP. To do so go to Finder, right click any PNG file,
- * select "Get info" and there in the "Open with" section select GIMP. Then press the
- * "Change all..." button. At least on the MacOS I tested, this was the only way to have the sketch
- * images open in a existing GIMP instance, not having to launch a new GIMP every time).
+ * 2) inside the "sketcher.txt" write the binary/command to your viewer (respecting upper and lower
+ * cases). For instance, for Microsoft Paint, the command is: 'mspaint'. But if your environment
+ * does not have such command, then you must specify the full path to the binary. For instance, the
+ * GIMP 2.10 binary in Windows might look like 'C:\Program Files\GIMP 2\bin\gimp-2.10.exe', and in
+ * MacOS it might look like '/Applications/Gimp-2.10.app/Contents/MacOS/gimp' (NOTE ON MacOS: if
+ * GIMP is the desired viewer, it seems it is best to **NOT** specify the binary in the
+ * 'sketcher.txt' file, but rather to set the system to open images with GIMP by default. To do so
+ * go to Finder, right click any PNG file (also repeat the process for .JPG, etc, if you'd like
+ * those associated as well), and select "Get info". In the Info window click the arrow next to
+ * "Open with", then click the menu and select GIMP, and finally click the "Change all..." button.
+ * At least on the MacOS I tested, this was the only way to have the sketch images open in a
+ * existing GIMP instance, not having to launch a new GIMP every time).
  * 
- * RESPECT LOWER AND UPPERCASES!
+ * 3) SAVE CHANGES, AND AFTER CREATING THE FILE "sketcher.txt" FOR THE FIRST TIME, RESTART
+ * FREEPLANE.
  * 
- * 3) AFTER CREATING THE FILE "sketcher.txt" FOR THE FIRST TIME, RESTART FREEPLANE.
+ * 4) TIP: TO INDICATE THAT YOU PREFER TO USE THE SYSTEM-ASSOCIATED APPLICATION, WRITE 'system' ON
+ * THE FIRST LINE OF 'sketcher.txt'. ANOTHER FEATURE IS YOU CAN KEEP AS MANY LINES AS YOU WANT IN
+ * THE 'sketcher.txt' FILE, EACH INDICATING A VIEWER BINARY. THE KEY THING IS TO REMEMBER THAT THE
+ * FIRST NON-BLANK LINE OF THE 'sketcher.txt' FILE WILL BE TAKEN AS YOUR CONFIGURATION OF CHOICE.
+ * YOU CAN KEEP THE REST OF LINES FOR EASY REFERENCE IN CASE YOU SWITCH BACK AND FORTH.
  * 
  * ---------
  * 
+ * ## Permissions
+ * 
  * The following script permissions are required (set it in Preferences -> Plug-ins): 1- Permit File
  * read; 2- Permit File write; 3- Permit to execute other applications
+ * 
+ * ---
+ * 
+ * ## More specs
  * 
  * If a new image was created, it will be stored in the folder 'MyMapName_files', and this folder
  * will be located on the folder containing the mindmap.
@@ -95,11 +111,11 @@ import org.freeplane.view.swing.features.filepreview.ExternalResource
 import org.freeplane.view.swing.features.filepreview.ViewerController
 import org.freeplane.view.swing.features.progress.mindmapmode.ProgressIcons
 
-
 public class QuickSketch {
 
-  public static String editorBinary = null
+  public static String editorBinary = ""
   public static final String DEFAULT_WINDOWS_EDITOR = "mspaint"
+  public static final String SYSTEM_ASSOCIATED_KEY = "system"
   // public static boolean shouldMonitorExtProcess = false;
 
   public static void run() {
@@ -108,7 +124,10 @@ public class QuickSketch {
       List<String> lines = Files.readAllLines(Paths.get(userDir, "scripts", "sketcher.txt"))
       lines = lines.stream().filter{it -> !it.trim().equals("")}.collect(Collectors.toList())
       if (lines.size() > 0) {
-        editorBinary = lines.get(0)
+        editorBinary = lines.get(0).trim()
+        if (editorBinary.equalsIgnoreCase(SYSTEM_ASSOCIATED_KEY)) {
+          editorBinary = ""
+        }
       }
     } catch (IOException e1) {
     }
@@ -206,7 +225,7 @@ public class QuickSketch {
               File file = new File(getExternalResource(nodeModel).getUri())
               JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
                   "<html><body width='400px'; style=\"font-size: 13px\">"
-                  + "CLICK 'OK' once you finish editing your skectch. Please save any changes beforehand."
+                  + "CLICK 'OK' once you finish editing your sketch. Please save any changes beforehand."
                   + "</body></html>")
               // (Suggestion: If you don't see the editor yet, press 'alt + TAB' (Windows/Linux) or 'cmd
               // + TAB' (MacOS))
@@ -220,10 +239,7 @@ public class QuickSketch {
   private static Process openImageInEditor(File file, String imageEditor) throws IOException {
     Process process = null
     Runtime runTime = Runtime.getRuntime()
-    String[] cmd = [
-      imageEditor,
-      file.toString()
-    ]
+    String[] cmd = [imageEditor, file.toString()]
     process = runTime.exec(cmd)
     return process
   }
