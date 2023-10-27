@@ -1,4 +1,4 @@
-// @ExecutionModes({ON_SINGLE_NODE="/main_menu/i-plasm"})
+// @ExecutionModes({ON_SINGLE_NODE="/main_menu/i-plasm/miscUtils"})
 
 package scripts
 
@@ -31,7 +31,7 @@ QuickSketch.run()
  * Select a node, call the script and a new blank image or an existing one will be open in a
  * external image editor. Changes to the image will be refreshed in your mindmap.
  * 
- * Script location: 'i-plasm -> Sketcher'
+ * Script location: 'i-plasm -> Misc Utils -> Sketcher'
  * 
  * ---------
  * 
