@@ -8,7 +8,7 @@ QuickSketch.run()
  * # Sketcher: Freeplane Script for quickly sketching drawings on a node.
  *
  * Github: https://github.com/i-plasm/freeplane-scripts
- * 
+ *
  * Discussion: https://github.com/freeplane/freeplane/discussions/1496
  *
  * Copyright (C) 2023 bbarbosa
@@ -25,29 +25,29 @@ QuickSketch.run()
  * not, see <https://www.gnu.org/licenses/>.
  *
  * ---------
- * 
+ *
  * ## Generalities
- * 
+ *
  * Sketcher is a Freeplane Script for quickly sketching drawings on a node.
- * 
+ *
  * Select a node, call the script and a new blank image or an existing one will be open in a
  * external image editor. Changes to the image will be refreshed in your mindmap.
- * 
+ *
  * Script location: 'i-plasm -> Misc Utils -> Sketcher'
- * 
+ *
  * ---------
- * 
+ *
  * ## The external viewer
- * 
+ *
  * You may or may not specify a viewer
- * 
+ *
  * If the viewer is not specified or can not be successfully used, then the script will open the
  * image in the default image viewer.
- * 
+ *
  * If you'd like to specify the viewer, follow these steps:
- * 
+ *
  * 1) In your Freeplane 'scripts' directory, Create a file named "sketcher.txt" (lowercase).
- * 
+ *
  * 2) inside the "sketcher.txt" write the binary/command to your viewer (respecting upper and lower
  * cases). For instance, for Microsoft Paint, the command is: 'mspaint'. But if your environment
  * does not have such command, then you must specify the full path to the binary. For instance, the
@@ -60,33 +60,33 @@ QuickSketch.run()
  * "Open with", then click the menu and select GIMP, and finally click the "Change all..." button.
  * At least on the MacOS I tested, this was the only way to have the sketch images open in a
  * existing GIMP instance, not having to launch a new GIMP every time).
- * 
+ *
  * 3) SAVE CHANGES, AND AFTER CREATING THE FILE "sketcher.txt" FOR THE FIRST TIME, RESTART
  * FREEPLANE.
- * 
+ *
  * 4) TIP: TO INDICATE THAT YOU PREFER TO USE THE SYSTEM-ASSOCIATED APPLICATION, WRITE 'system' ON
  * THE FIRST LINE OF 'sketcher.txt'. ANOTHER FEATURE IS YOU CAN KEEP AS MANY LINES AS YOU WANT IN
  * THE 'sketcher.txt' FILE, EACH INDICATING A VIEWER BINARY. THE KEY IS TO REMEMBER THAT THE FIRST
  * NON-BLANK LINE OF THE 'sketcher.txt' FILE WILL BE TAKEN AS YOUR CONFIGURATION OF CHOICE. YOU CAN
  * KEEP THE REST OF LINES FOR EASY REFERENCE IN CASE YOU SWITCH BACK AND FORTH.
- * 
+ *
  * ---------
- * 
+ *
  * ## Permissions
- * 
+ *
  * The following script permissions are required (set it in Preferences -> Plug-ins): 1- Permit File
  * read; 2- Permit File write; 3- Permit to execute other applications
- * 
+ *
  * ---
- * 
+ *
  * ## More specs
- * 
+ *
  * If a new image was created, it will be stored in the folder 'MyMapName_files', and this folder
  * will be located on the folder containing the mindmap.
- * 
+ *
  * This script may be developed more and converted into an add-on. Feel free to check for updates
  * and leave feedback!
- * 
+ *
  */
 
 import java.awt.Color
@@ -105,18 +105,17 @@ import org.freeplane.api.Node
 import org.freeplane.core.resources.ResourceController
 import org.freeplane.core.ui.components.UITools
 import org.freeplane.core.util.Hyperlink
+import org.freeplane.features.link.LinkController
 import org.freeplane.features.map.NodeModel
 import org.freeplane.features.mode.Controller
 import org.freeplane.features.url.UrlManager
 import org.freeplane.plugin.script.proxy.ScriptUtils
 import org.freeplane.view.swing.features.filepreview.ExternalResource
 import org.freeplane.view.swing.features.filepreview.ViewerController
-import org.freeplane.view.swing.features.progress.mindmapmode.ProgressIcons
 
 public class QuickSketch {
 
   private static String editorBinary = ""
-  public static final String DEFAULT_WINDOWS_EDITOR = "mspaint"
   public static final String SYSTEM_ASSOCIATED_KEY = "system"
   // public static boolean shouldMonitorExtProcess = false;
 
@@ -134,12 +133,7 @@ public class QuickSketch {
     } catch (IOException e1) {
     }
 
-    File file = null
-
-    BufferedImage img = new BufferedImage(400, 400, BufferedImage.TYPE_INT_ARGB)
-    Graphics2D g2d = img.createGraphics()
-    g2d.setColor(Color.WHITE)
-    g2d.fillRect(0, 0, 400, 400)
+    File imageFile = null
 
     File mapFile = Controller.getCurrentController().getMap().getFile()
     if (mapFile == null) {
@@ -167,33 +161,36 @@ public class QuickSketch {
     NodeModel selectedNodeModel =
         Controller.getCurrentModeController().getMapController().getSelectedNode()
     try {
-      file = new File(imageDir.toFile(), "sketch_" + node.getShortText() + "_"
-          + System.currentTimeMillis() + "_" + mapName + ".png")
 
       if (getExternalResource(selectedNodeModel) == null) {
-        // file.getParentFile().mkdirs();
-        ImageIO.write(img, "PNG", file)
+        imageFile = new File(imageDir.toFile(), "sketch_" + node.getShortText() + "_"
+            + System.currentTimeMillis() + "_" + mapName + ".png")
+        createNewPNG(imageFile)
+        final URI uriRelativeOrAbsoluteAccordingToMapPrefs =
+            LinkController.toLinkTypeDependantURI(mapFile, imageFile)
+        addImageToNode(uriRelativeOrAbsoluteAccordingToMapPrefs, selectedNodeModel)
       } else {
-        file = new File(getExternalResource(selectedNodeModel).getUri())
-      }
+        URI uri = getExternalResource(selectedNodeModel).getUri()
+        uri = uri.isAbsolute() ? uri
+            : mapDir.toURI().resolve(getExternalResource(selectedNodeModel).getUri())
+        imageFile = new File(uri)
 
-      // If the node already has an image, this will refresh it. Otherwise, it will add a blank one.
-      addExtImage(file, selectedNodeModel)
+        refreshImageInMap(node)
+      }
 
       Process process = null
       try {
-        process = openImageInEditor(file, editorBinary)
+        process = openImageInEditor(imageFile, editorBinary)
       } catch (IOException e) {
         // shouldMonitorExtProcess = false;
-        // e.printStackTrace();
         System.out.println("SKETCHER_WARNING: The Image could not be open in the indicated editor '"
             + editorBinary + "'" + ". MESSAGE: " + e.getMessage())
         UrlManager urlManager =
             Controller.getCurrentModeController().getExtension(UrlManager.class)
-        urlManager.loadHyperlink(new Hyperlink(file.toURI()))
+        urlManager.loadHyperlink(new Hyperlink(imageFile.toURI()))
       }
 
-      showRefreshPrompt(selectedNodeModel)
+      showRefreshPrompt(node)
     } catch (IOException e) {
       e.printStackTrace()
       JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
@@ -204,17 +201,37 @@ public class QuickSketch {
   }
 
 
-  private static void showRefreshPrompt(NodeModel selectedNodeModel) {
-    Executors.newScheduledThreadPool(1).schedule(new RefreshRunnable(selectedNodeModel), 0,
-        TimeUnit.SECONDS)
+
+  private static void createNewPNG(File file) throws IOException {
+    BufferedImage img = new BufferedImage(400, 400, BufferedImage.TYPE_INT_ARGB)
+    Graphics2D g2d = img.createGraphics()
+    g2d.setColor(Color.WHITE)
+    g2d.fillRect(0, 0, 400, 400)
+
+    // file.getParentFile().mkdirs();
+    ImageIO.write(img, "PNG", file)
+  }
+
+
+
+  private static void refreshImageInMap(Node node) {
+    float zoom = node.getExternalObject().getZoom()
+    node.getExternalObject().setZoom((float)(zoom - 0.05f))
+    EventQueue.invokeLater{ node.getExternalObject().setZoom(zoom)}
+  }
+
+
+
+  private static void showRefreshPrompt(Node node) {
+    Executors.newScheduledThreadPool(1).schedule(new RefreshRunnable(node), 0, TimeUnit.SECONDS)
   }
 
 
   private static class RefreshRunnable implements Runnable {
-    NodeModel nodeModel
+    Node node
 
-    RefreshRunnable(NodeModel nodeModel) {
-      this.nodeModel = nodeModel
+    RefreshRunnable(Node node) {
+      this.node = node
     }
 
     @Override
@@ -224,14 +241,13 @@ public class QuickSketch {
 
             @Override
             public void run() {
-              File file = new File(getExternalResource(nodeModel).getUri())
               JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
                   "<html><body width='400px'; style=\"font-size: 13px\">"
                   + "CLICK 'OK' once you finish editing your sketch. Please save any image changes beforehand."
                   + "</body></html>")
               // (Suggestion: If you don't see the editor yet, press 'alt + TAB' (Windows/Linux) or 'cmd
               // + TAB' (MacOS))
-              addExtImage(file, nodeModel)
+              refreshImageInMap(node)
             }
           })
     }
@@ -247,28 +263,18 @@ public class QuickSketch {
   }
 
 
-  private static void addExtImage(File file, NodeModel selectedNode) {
+  private static void addImageToNode(URI uri, NodeModel selectedNode) {
     ViewerController viewer =
         Controller.getCurrentController().getModeController().getExtension(ViewerController.class)
     if (selectedNode == null)
       return
-    ExternalResource extRes = createExtension(selectedNode, file)
+    ExternalResource extRes = new ExternalResource(uri)
     if (extRes == null)
       return
-    URI absoluteUri = extRes.getAbsoluteUri(selectedNode.getMap())
-    if (absoluteUri == null)
-      return
-    viewer.paste(absoluteUri, selectedNode)
+    viewer.paste(uri, selectedNode)
   }
 
   private static ExternalResource getExternalResource(NodeModel nodeModel) {
     return nodeModel.getExtension(ExternalResource.class)
-  }
-
-
-  private static ExternalResource createExtension(final NodeModel node, File input) {
-    ExternalResource preview = new ExternalResource(input.toURI())
-    ProgressIcons.updateExtendedProgressIcons(node, input.getName())
-    return preview
   }
 }
