@@ -64,7 +64,7 @@ QuickSketch.run()
  * 3) SAVE CHANGES, AND AFTER CREATING THE FILE "sketcher.txt" FOR THE FIRST TIME, RESTART
  * FREEPLANE.
  *
- * 4) TIP: TO INDICATE THAT YOU PREFER TO USE THE SYSTEM-ASSOCIATED APPLICATION, WRITE 'system' ON
+ * 4) TIP: TO INDICATE THAT YOU PREFER TO USE THE SYSTEM-ASSOCIATED APPLICATION, WRITE 'default' ON
  * THE FIRST LINE OF 'sketcher.txt'. ANOTHER FEATURE IS YOU CAN KEEP AS MANY LINES AS YOU WANT IN
  * THE 'sketcher.txt' FILE, EACH INDICATING A VIEWER BINARY. THE KEY IS TO REMEMBER THAT THE FIRST
  * NON-BLANK LINE OF THE 'sketcher.txt' FILE WILL BE TAKEN AS YOUR CONFIGURATION OF CHOICE. YOU CAN
@@ -116,7 +116,7 @@ import org.freeplane.view.swing.features.filepreview.ViewerController
 public class QuickSketch {
 
   private static String editorBinary = ""
-  public static final String SYSTEM_ASSOCIATED_KEY = "system"
+  public static final String DEFAULT_VIEWER_ASSOCIATED_KEY = "default"
   // public static boolean shouldMonitorExtProcess = false;
 
   public static void run() {
@@ -126,7 +126,7 @@ public class QuickSketch {
       lines = lines.stream().filter{it -> !it.trim().equals("")}.collect(Collectors.toList())
       if (lines.size() > 0) {
         editorBinary = lines.get(0).trim()
-        if (editorBinary.equalsIgnoreCase(SYSTEM_ASSOCIATED_KEY)) {
+        if (editorBinary.equalsIgnoreCase(DEFAULT_VIEWER_ASSOCIATED_KEY)) {
           editorBinary = ""
         }
       }
