@@ -10,6 +10,24 @@ QuickSketch.run()
  * Github: https://github.com/i-plasm/freeplane-scripts
  *
  * Discussion: https://github.com/freeplane/freeplane/discussions/1496
+ * 
+ * Instructions: see sections below.
+ * 
+ * ---
+ * 
+ * News 2023-11-12:
+ * Sketcher and other accompanying functionalities (like easier configuration, a command for refreshing the image, etc) 
+ * are now integrated as a default "service" in the new "IntelliFlow" script/plugin for Freeplane. From now on, Sketcher 
+ * development and maintenance will occur as part of that project and the stand alone script may not always be up-to-date.
+ * 
+ * Update 2023-11-12:
+ * Bug fix: if node core text had certain special characters and/or line breaks, Sketcher would fail 
+ * to create a new blank image
+ * 
+ * Update 2023-10-28:
+ * It now supports handling images with relative paths, and respects the Freeplane preference for relative vs. absolute path.
+ *
+ * ---
  *
  * Copyright (C) 2023 bbarbosa
  *
@@ -143,7 +161,7 @@ public class QuickSketch {
     }
 
     File mapDir = mapFile.getParentFile()
-    String mapName = Controller.getCurrentController().getMap().getFile().getName()
+    String mapName = Controller.getCurrentController().getMap().getFile().getName().trim()
     String suffix = mapName.substring(mapName.length() - ".mm".length(), mapName.length())
     if (suffix.equals(".mm")) {
       mapName = mapName.substring(0, mapName.length() - ".mm".length())
@@ -163,8 +181,8 @@ public class QuickSketch {
     try {
 
       if (getExternalResource(selectedNodeModel) == null) {
-        imageFile = new File(imageDir.toFile(), "sketch_" + node.getShortText() + "_"
-            + System.currentTimeMillis() + "_" + mapName + ".png")
+        imageFile = new File(imageDir.toFile(),
+            "sketch_" + System.currentTimeMillis() + "_" + mapName + ".png")
         createNewPNG(imageFile)
         final URI uriRelativeOrAbsoluteAccordingToMapPrefs =
             LinkController.toLinkTypeDependantURI(mapFile, imageFile)

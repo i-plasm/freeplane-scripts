@@ -1,6 +1,10 @@
 // @ExecutionModes({ON_SINGLE_NODE="/main_menu/i-plasm/filtering"})
 
-/*
+/* 
+ * Update 23-11-11. Improved performance for larger maps.
+ * 
+ * ---------
+ * 
  * WEBSITE: https://github.com/i-plasm/freeplane-scripts
  *  
  * The script essentially filters the selected node, making sure the ancestors and descendants are
@@ -21,6 +25,7 @@
  */
 package scripts
 
+import java.awt.EventQueue
 import org.freeplane.core.util.MenuUtils
 import org.freeplane.features.filter.FilterController
 
@@ -28,13 +33,34 @@ filter()
 
 def filter() {
 
-  if (!FilterController.getCurrentFilterController().getShowAncestors().isSelected()) {
-    MenuUtils.executeMenuItems(['ShowAncestorsAction'])
-  }
-  if (!FilterController.getCurrentFilterController().getShowDescendants().isSelected()) {
-    MenuUtils.executeMenuItems(['ShowDescendantsAction'])
-  }
-  MenuUtils.executeMenuItems([
-    'ApplySelectedViewConditionAction'
-  ])
+  MenuUtils.executeMenuItems(['NewMapViewAction'])
+
+  EventQueue.invokeLater(new Runnable() {
+        @Override
+        public void run() {
+          if (!FilterController.getCurrentFilterController().getShowAncestors().isSelected()) {
+            MenuUtils.executeMenuItems(['ShowAncestorsAction'])
+          }
+        }
+      })
+
+  EventQueue.invokeLater(new Runnable() {
+
+        @Override
+        public void run() {
+          if (!FilterController.getCurrentFilterController().getShowDescendants().isSelected()) {
+            MenuUtils.executeMenuItems(['ShowDescendantsAction'])
+          }
+        }
+      })
+
+  EventQueue.invokeLater(new Runnable() {
+
+        @Override
+        public void run() {
+          MenuUtils.executeMenuItems([
+            'ApplySelectedViewConditionAction'
+          ])
+        }
+      })
 }
