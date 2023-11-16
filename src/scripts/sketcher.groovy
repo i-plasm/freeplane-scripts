@@ -15,12 +15,7 @@ QuickSketch.run()
  * 
  * ---
  * 
- * News 2023-11-12:
- * Sketcher and other accompanying functionalities (like easier configuration, a command for refreshing the image, etc) 
- * are now integrated as a default "service" in the new "IntelliFlow" script/plugin for Freeplane. From now on, Sketcher 
- * development and maintenance will occur as part of that project and the stand alone script may not always be up-to-date.
- * 
- * Update 2023-11-12:
+ * Update 2023-11-16:
  * Bug fix: if node core text had certain special characters and/or line breaks, Sketcher would fail 
  * to create a new blank image
  * 
@@ -29,6 +24,8 @@ QuickSketch.run()
  *
  * ---
  *
+ * Sketcher: Freeplane Script for quickly sketching drawings on a node.
+ * 
  * Copyright (C) 2023 bbarbosa
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the
@@ -201,7 +198,7 @@ public class QuickSketch {
         process = openImageInEditor(imageFile, editorBinary)
       } catch (IOException e) {
         // shouldMonitorExtProcess = false;
-        System.out.println("SKETCHER_WARNING: The Image could not be open in the indicated editor '"
+        System.out.println("SKETCHER_WARNING: The Image could not be opened in the indicated editor '"
             + editorBinary + "'" + ". MESSAGE: " + e.getMessage())
         UrlManager urlManager =
             Controller.getCurrentModeController().getExtension(UrlManager.class)
@@ -262,6 +259,7 @@ public class QuickSketch {
               JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
                   "<html><body width='400px'; style=\"font-size: 13px\">"
                   + "CLICK 'OK' once you finish editing your sketch. Please save any image changes beforehand."
+                  + "<br><br>" + "Please check your taskbar if you can't see the application."
                   + "</body></html>")
               // (Suggestion: If you don't see the editor yet, press 'alt + TAB' (Windows/Linux) or 'cmd
               // + TAB' (MacOS))

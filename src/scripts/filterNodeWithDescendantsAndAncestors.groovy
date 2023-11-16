@@ -1,7 +1,7 @@
 // @ExecutionModes({ON_SINGLE_NODE="/main_menu/i-plasm/filtering"})
 
 /* 
- * Update 23-11-11. Improved performance for larger maps.
+ * Update 23-11-16. Improved performance for larger maps.
  * 
  * ---------
  * 
@@ -26,12 +26,20 @@
 package scripts
 
 import java.awt.EventQueue
+import javax.swing.JOptionPane
+import org.freeplane.core.ui.components.UITools
 import org.freeplane.core.util.MenuUtils
 import org.freeplane.features.filter.FilterController
+import org.freeplane.plugin.script.proxy.ScriptUtils
 
 filter()
 
 def filter() {
+  if (ScriptUtils.c().getSelecteds().size() > 1) {
+    JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
+        "You have selected multiple nodes. Currently, it is only possible to breadcrumb a single node.")
+    return
+  }
 
   MenuUtils.executeMenuItems(['NewMapViewAction'])
 
@@ -60,6 +68,16 @@ def filter() {
         public void run() {
           MenuUtils.executeMenuItems([
             'ApplySelectedViewConditionAction'
+          ])
+        }
+      })
+
+  EventQueue.invokeLater(new Runnable() {
+
+        @Override
+        public void run() {
+          MenuUtils.executeMenuItems([
+            'MoveSelectedNodeAction.CENTER'
           ])
         }
       })
