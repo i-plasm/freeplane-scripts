@@ -1716,9 +1716,9 @@ public class IntelliFlow {
   // ---------------------------------------------------------------
 
   /**
-   * The methods in this class are derived/copied from the external "java-commons" library:
+   * The methods in this class are derived/copied from the external "jhelperutils" library:
    * 
-   * Github: https://github.com/i-plasm/java-commons/
+   * Github: https://github.com/i-plasm/jhelperutils/
    */
   public static class SwingAwtTools {
 
@@ -1857,9 +1857,9 @@ public class IntelliFlow {
   }
 
   /**
-   * The methods in this class are derived/copied from the external "java-commons" library:
+   * The methods in this class are derived/copied from the external "jhelperutils" library:
    * 
-   * Github: https://github.com/i-plasm/java-commons/
+   * Github: https://github.com/i-plasm/jhelperutils/
    */
   public static class TextUtils {
     public static String extractExtension(String urlOrPath) {
@@ -1885,9 +1885,9 @@ public class IntelliFlow {
   }
 
   /**
-   * The methods in this class are derived/copied from the external "java-commons" library:
+   * The methods in this class are derived/copied from the external "jhelperutils" library:
    *
-   * Github: https://github.com/i-plasm/java-commons/
+   * Github: https://github.com/i-plasm/jhelperutils/
    */
   static class SysUtils {
     public static boolean isNeitherWindowsNorMac() {
@@ -1907,9 +1907,9 @@ public class IntelliFlow {
   }
 
   /**
-   * The methods in this class are derived/copied from the external "java-commons" library:
+   * The methods in this class are derived/copied from the external "jhelperutils" library:
    * 
-   * Github: https://github.com/i-plasm/java-commons/
+   * Github: https://github.com/i-plasm/jhelperutils/
    */
   public static class MenuHelper {
 
@@ -1992,9 +1992,9 @@ public class IntelliFlow {
   }
 
   /**
-   * The methods in this class are derived/copied from the external "java-commons" library:
+   * The methods in this class are derived/copied from the external "jhelperutils" library:
    *
-   * Github: https://github.com/i-plasm/java-commons/
+   * Github: https://github.com/i-plasm/jhelperutils/
    */
   static class IOUtils {
 
