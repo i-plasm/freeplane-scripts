@@ -610,9 +610,9 @@ public class IntelliFlow {
     floatingPopup.add(contentsMenuItem)
 
     String visitWebsite = MenuHelper.floatingMenuItemUnderlinedActionHTML("Discusion & Updates:",
-        "https://github.com/freeplane/freeplane/discussions/")
+        "https://github.com/freeplane/freeplane/discussions/1534")
     JMenuItem visitWebsiteItem =
-        createLinkMenuItem("https://github.com/freeplane/freeplane/discussions/", visitWebsite)
+        createLinkMenuItem("https://github.com/freeplane/freeplane/discussions/1534", visitWebsite)
     floatingPopup.add(visitWebsiteItem)
 
     contentsMenuItem.addActionListener{ l ->
