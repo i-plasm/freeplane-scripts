@@ -1,6 +1,11 @@
 // @ExecutionModes({ON_SINGLE_NODE="/main_menu/i-plasm/filtering"})
 
 /* 
+ * News 2023-11-16:
+ * This standalone script is now superseded by the 'Breadcrumb node' service within IntelliFlow - an intelligent service-provider 
+ * menu for Freeplane -. Any updates and maintainance will go toward the 'Breadcrumb node' IntelliFlow service: 
+ * https://github.com/freeplane/freeplane/discussions/1534
+ * 
  * Update 23-11-16. Improved performance for larger maps.
  * 
  * ---------

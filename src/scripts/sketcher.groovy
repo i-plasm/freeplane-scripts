@@ -15,6 +15,11 @@ QuickSketch.run()
  * 
  * ---
  * 
+ * News 2023-11-16:
+ * Sketcher as a standalone script is now superseded by the Sketcher service bundle within IntelliFlow - an intelligent service-provider 
+ * menu for Freeplane -. Any updates and maintainance will go toward the Sketcher IntelliFlow service bundle: 
+ * https://github.com/freeplane/freeplane/discussions/1534
+ * 
  * Update 2023-11-16:
  * Bug fix: if node core text had certain special characters and/or line breaks, Sketcher would fail 
  * to create a new blank image
