@@ -2,6 +2,10 @@
 package scripts
 
 /*
+ * Discussion: https://github.com/freeplane/freeplane/discussions/1534
+ * 
+ * ---------
+ * 
  * IntelliFlow: Intelligent ('context-aware') menu acting like a services/command provider for
  * Freeplane.
  *
@@ -512,16 +516,16 @@ public class IntelliFlow {
         "About " + PLUGIN_NAME)
     floatingPopup.add(contentsMenuItem)
 
-    String visitWebsite = MenuHelper.floatingMenuItemUnderlinedActionHTML("Discusion:",
-        "https://github.com/freeplane/freeplane/discussions/")
+    String visitWebsite = MenuHelper.floatingMenuItemUnderlinedActionHTML("Discusion & Info:",
+        "https://github.com/freeplane/freeplane/discussions/1534")
     JMenuItem visitWebsiteItem =
-        createLinkMenuItem("https://github.com/freeplane/freeplane/discussions/", visitWebsite)
+        createLinkMenuItem("https://github.com/freeplane/freeplane/discussions/1534", visitWebsite)
     floatingPopup.add(visitWebsiteItem)
 
-    String updatesWebsite = MenuHelper.floatingMenuItemUnderlinedActionHTML("Discusion:",
-        "https://github.com/freeplane/freeplane/discussions/")
+    String updatesWebsite = MenuHelper.floatingMenuItemUnderlinedActionHTML("Updates:",
+        "https://github.com/i-plasm/freeplane-scripts/wiki/IntelliFlow-Updates")
     JMenuItem updatesItem =
-        createLinkMenuItem("https://github.com/freeplane/freeplane/discussions/", updatesWebsite)
+        createLinkMenuItem("https://github.com/i-plasm/freeplane-scripts/wiki/IntelliFlow-Updates", updatesWebsite)
     floatingPopup.add(updatesItem)
 
     JMenuItem licenseMenuItem = MenuHelper.createContentNoticeMenuItem(PLUGIN_NAME + " " +
