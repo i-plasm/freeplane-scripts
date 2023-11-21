@@ -10,27 +10,27 @@ QuickSketch.run()
  * Github: https://github.com/i-plasm/freeplane-scripts
  *
  * Discussion: https://github.com/freeplane/freeplane/discussions/1496
- * 
+ *
  * Instructions: see sections below.
- * 
+ *
  * ---
- * 
+ *
  * News 2023-11-16:
- * Sketcher as a standalone script is now superseded by the Sketcher service bundle within IntelliFlow - an intelligent service-provider 
- * menu for Freeplane -. Any updates and maintainance will go toward the Sketcher IntelliFlow service bundle: 
+ * Sketcher as a standalone script is now superseded by the Sketcher service bundle within IntelliFlow - an intelligent service-provider
+ * menu for Freeplane -. Any updates and maintainance will go toward the Sketcher IntelliFlow service bundle:
  * https://github.com/freeplane/freeplane/discussions/1534
- * 
+ *
  * Update 2023-11-16:
- * Bug fix: if node core text had certain special characters and/or line breaks, Sketcher would fail 
+ * Bug fix: if node core text had certain special characters and/or line breaks, Sketcher would fail
  * to create a new blank image
- * 
+ *
  * Update 2023-10-28:
  * It now supports handling images with relative paths, and respects the Freeplane preference for relative vs. absolute path.
  *
  * ---
  *
  * Sketcher: Freeplane Script for quickly sketching drawings on a node.
- * 
+ *
  * Copyright (C) 2023 bbarbosa
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the
