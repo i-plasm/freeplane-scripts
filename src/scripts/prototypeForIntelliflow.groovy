@@ -4,6 +4,8 @@ package scripts
 /*
  * Discussion: https://github.com/freeplane/freeplane/discussions/1534
  * 
+ * Last Update: 2023-12-10
+ * 
  * ---------
  * 
  * IntelliFlow: Intelligent ('context-aware') menu acting like a services/command provider for
@@ -45,6 +47,7 @@ import java.nio.file.Paths
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.function.Supplier
 import java.util.regex.Pattern
 import java.util.stream.Collectors
 import javax.imageio.ImageIO
@@ -337,7 +340,10 @@ public class IntelliFlow {
 
     // --------- Sketcher Menu --------
 
-    JMenu sketcherMenu = new JMenu("Sketcher")
+    MenuHelper.DynamicMenu sketcherMenu =
+        new MenuHelper.DynamicMenu("Sketcher", {
+          SketcherUtility.getAssociatedFilesMenu()
+        })
     popup.add(sketcherMenu)
 
     JMenuItem menuItemSketcherCommand =
@@ -352,6 +358,10 @@ public class IntelliFlow {
         })
     sketcherMenu.add(menuItemSketcherRefreshImage)
 
+    JMenuItem menuItemSketcherOpenContainingFolder = makeStandardMenuItem("Open image folder",
+        "sketcher_openfolder", { SketcherUtility.sketcherOpenFolder()})
+    sketcherMenu.add(menuItemSketcherOpenContainingFolder)
+
     JMenuItem menuItemSketcherConfigure = makeStandardMenuItem("Configuration",
         "sketcher_configure", {
           SketcherUtility.sketcherConfigure()
@@ -364,6 +374,7 @@ public class IntelliFlow {
         })
     sketcherMenu.add(menuItemSketcherHelp)
 
+    sketcherMenu.addDynamicItems()
 
     // --------- end Sketcher Menu ---------
 
@@ -1290,6 +1301,100 @@ public class IntelliFlow {
       showPopupMenu(floatingPopup, launchMode)
       requestFocusIfNeeded(floatingPopup)
     }
+
+    public static void sketcherOpenFolder() {
+      File imageFile = null
+      File mapFile = Controller.getCurrentController().getMap().getFile()
+      List<? extends Node> selecteds = ScriptUtils.c().getSelecteds()
+
+      if (selecteds.size() > 1 || mapFile == null) {
+        return
+      }
+
+      NodeModel selectedNodeModel =
+          Controller.getCurrentModeController().getMapController().getSelectedNode()
+
+      if (getExternalResource(selectedNodeModel) == null) {
+        return
+      }
+
+      File mapDir = mapFile.getParentFile()
+
+      URI uri = getExternalResource(selectedNodeModel).getUri()
+      uri = uri.isAbsolute() ? uri
+          : mapDir.toURI().resolve(getExternalResource(selectedNodeModel).getUri())
+      imageFile = new File(uri)
+      File imageDir = imageFile.getParentFile()
+
+      String feedbackMessage =
+          "It was not possible to locate or resolve the resource: " + imageDir.toString()
+      FreeplaneTools.openResource(imageDir.toString(), feedbackMessage)
+    }
+
+    /**
+     * Scans the directory where the image is located and filters all "associated" files, i.e having
+     * the same name (without extension) as the Image file, in order to offer appropriate actions.
+     *
+     * @return an array of menu items pointing to "associated" files able to execute appropriate
+     *         actions
+     */
+    static JMenuItem[] getAssociatedFilesMenu() {
+      File imageFile = null
+      File mapFile = Controller.getCurrentController().getMap().getFile()
+      List<? extends Node> selecteds = ScriptUtils.c().getSelecteds()
+
+      if (selecteds.size() > 1 || mapFile == null) {
+        return new JMenuItem[0]
+      }
+
+      NodeModel selectedNodeModel =
+          Controller.getCurrentModeController().getMapController().getSelectedNode()
+
+      if (getExternalResource(selectedNodeModel) == null) {
+        return new JMenuItem[0]
+      }
+
+      File mapDir = mapFile.getParentFile()
+
+      URI uri = getExternalResource(selectedNodeModel).getUri()
+      uri = uri.isAbsolute() ? uri
+          : mapDir.toURI().resolve(getExternalResource(selectedNodeModel).getUri())
+      imageFile = new File(uri)
+      File imageDir = imageFile.getParentFile()
+
+      String fileName = imageFile.getName()
+      int extensionLength = TextUtils.extractExtension(fileName) != ""
+          ? TextUtils.extractExtension(fileName).length() + 1
+          : 0
+      String fileNameWithoutExt = fileName.substring(0, fileName.length() - extensionLength)
+
+      File[] listOfFiles = imageDir.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+              String ext = TextUtils.extractExtension(name)
+              return !name.equals(fileName) && name.startsWith(fileNameWithoutExt) && (name.endsWith(fileNameWithoutExt + "." + ext)
+                  || (name.endsWith(fileName + "." + ext)
+                  || name.toLowerCase().endsWith(fileNameWithoutExt.toLowerCase() + "." + ext))
+                  || name.toLowerCase().endsWith(fileName.toLowerCase() + "." + ext))
+            }
+          })
+
+      List<JMenuItem> menuItems = new ArrayList<>()
+      for (File companionFile : listOfFiles) {
+        String feedbackMessage =
+            "It was not possible to locate or resolve the resource: " + companionFile.toString()
+
+        JMenuItem menuItem = makeStandardMenuItem(
+            "Open associated ." + TextUtils.extractExtension(companionFile.getName()).toUpperCase() +
+            " file: " + companionFile.getName(),
+            "", {
+              FreeplaneTools.openResource(companionFile.toString(), feedbackMessage)
+            })
+        menuItem.setToolTipText(companionFile.toString())
+        menuItems.add(menuItem)
+      }
+      return menuItems.toArray(new JMenuItem[0])
+    }
   }
 
   // ---------------------------------------------------------------
@@ -1988,6 +2093,29 @@ public class IntelliFlow {
       }
       actionButton.setFocusable(false)
       return panel
+    }
+
+    public static class DynamicMenu extends JMenu {
+      Supplier<JMenuItem[]> menuItemGenerator
+
+      public DynamicMenu(String text, Supplier<JMenuItem[]> menuItemGenerator) {
+        super(text)
+        this.menuItemGenerator = menuItemGenerator
+      }
+
+      public void addDynamicItems() {
+        if (menuItemGenerator.get().length > 0) {
+          this.addSeparator()
+        }
+
+        for (JMenuItem item : menuItemGenerator.get()) {
+          this.add(item)
+        }
+
+        if (menuItemGenerator.get().length > 0) {
+          this.addSeparator()
+        }
+      }
     }
   }
 
