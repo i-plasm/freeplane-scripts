@@ -19,7 +19,8 @@
  *      ])
  * }
  * 
- * (the wrapping in `SwingUtilities.invokeLater`...` can be omitted if the call already comes from the Event Dispatch Thread)
+ * (the wrapping in `SwingUtilities.invokeLater`...` can be omitted if the call already comes from the Event Dispatch Thread,
+ * otherwise it must be used.)
  * 
  */
 
