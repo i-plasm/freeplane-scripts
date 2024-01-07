@@ -87,9 +87,6 @@ class FreeplaneED2C {
       if (filteresListeners.size() == 0) {
         ErrorDialog2Clipboard l = new ErrorDialog2Clipboard(targetErrorDialogTitle, true)
         l.activateListener()
-      } else if (filteresListeners.size() == 0) {
-        JOptionPane.showMessageDialog(fosusedWindow, "ErrorDialog2Clipboard is already running",
-            "ErrorDialog2Clipboard", JOptionPane.ERROR_MESSAGE)
       } else {
         JOptionPane.showMessageDialog(fosusedWindow,
             "There is a listener already registered. There should not be more than one registered ErrorDialog2Clipboard listeners! ",
@@ -199,6 +196,7 @@ class FreeplaneED2C {
         if (clipboard == null) {
           JOptionPane.showMessageDialog(fosusedWindow, "Failed to copy to clipboard",
               "ErrorDialog2Clipboard", JOptionPane.ERROR_MESSAGE)
+          return
         }
         StringSelection sel = new StringSelection(errorString)
         try {
