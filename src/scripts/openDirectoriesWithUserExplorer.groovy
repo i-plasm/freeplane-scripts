@@ -2,11 +2,11 @@
 package scripts
 
 /*
- * openDirectoriesWithUserExplorer: (Currently only for Windows) opens, if it exists, the linked folder 
- * of selected node(s) using the 'start' command. 
- * 
+ * openDirectoriesWithUserExplorer: (Currently only for Windows) opens, if it exists, the linked folder
+ * of selected node(s) using the 'start' command.
+ *
  * It may be useful if the user has set a file explorer other than Window's default one.
- * 
+ *
  * Github & Updates: https://github.com/i-plasm/freeplane-scripts
  *
  * License: GPL-3.0 license (https://github.com/i-plasm/freeplane-scripts/blob/main/LICENSE.txt)
@@ -16,16 +16,16 @@ package scripts
  * ## How to Use
  *
  * Select one or more nodes whose link points to a local directory, and invoke the script to open
- * the directory(ies). 
- * 
+ * the directory(ies).
+ *
  * If a link is not a directory, it will be ignored without error. If a link is a directory,
  * but it does not exist or could not be opened for any reason, an error will be logged.
- *   
+ *
  * ## Permissions
  *
- * The following script permissions are required (set them in Preferences -> Plug-ins): 
+ * The following script permissions are required (set them in Preferences -> Plug-ins):
  * 1- Permit File read; 2- Permit to execute other applications
- * 
+ *
  */
 
 import java.nio.file.Files

@@ -2,12 +2,12 @@
 package scripts
 
 /*
- * Discussion: https://github.com/freeplane/freeplane/discussions/1534
- * 
- * Last Update: 2023-12-10
- * 
+ * Info & Discussion: https://github.com/freeplane/freeplane/discussions/1534
+ *
+ * Last Update: 2024-05-20
+ *
  * ---------
- * 
+ *
  * IntelliFlow: Intelligent ('context-aware') menu acting like a services/command provider for
  * Freeplane.
  *
@@ -49,7 +49,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 import java.util.regex.Pattern
-import java.util.stream.Collectors
+import java.util.stream.Stream
 import javax.imageio.ImageIO
 import javax.swing.Box
 import javax.swing.JButton
@@ -343,14 +343,32 @@ public class IntelliFlow {
     MenuHelper.DynamicMenu sketcherMenu =
         new MenuHelper.DynamicMenu("Sketcher", {
           SketcherUtility.getAssociatedFilesMenu()
-        })
+        }, true)
     popup.add(sketcherMenu)
 
     JMenuItem menuItemSketcherCommand =
-        makeStandardMenuItem("Sketch drawing on node", "sketcher", {
+        makeMenuItemWithPrevalidation("Sketch drawing on node " ,
+        "sketcher", {
           SketcherUtility.run()
+        }, {
+          SketcherUtility.prevalidateSketcher()
         })
-    sketcherMenu.add(menuItemSketcherCommand)
+    if (menuItemSketcherCommand != null) {
+      sketcherMenu.add(menuItemSketcherCommand)
+    }
+
+    JMenuItem mainOrFirstTemplateMenu = SketcherUtility.getMainOrFirstTemplate()
+    if (mainOrFirstTemplateMenu != null) {
+      sketcherMenu.add(mainOrFirstTemplateMenu)
+    }
+
+    MenuHelper.DynamicMenu allTemplatesMenu = new MenuHelper.DynamicMenu("All templates", {
+      SketcherUtility.getUserTemplatesMenu()
+    }, false)
+    allTemplatesMenu.addDynamicItems()
+    sketcherMenu.add(allTemplatesMenu)
+
+    sketcherMenu.addSeparator()
 
     JMenuItem menuItemSketcherRefreshImage = makeStandardMenuItem(
         "Refresh " + NODE_MODE_DISPLAYSTRING.toLowerCase() + " image", "sketcher_refresh_image", {
@@ -359,7 +377,9 @@ public class IntelliFlow {
     sketcherMenu.add(menuItemSketcherRefreshImage)
 
     JMenuItem menuItemSketcherOpenContainingFolder = makeStandardMenuItem("Open image folder",
-        "sketcher_openfolder", { SketcherUtility.sketcherOpenFolder()})
+        "sketcher_openfolder", {
+          SketcherUtility.sketcherOpenFolder()
+        })
     sketcherMenu.add(menuItemSketcherOpenContainingFolder)
 
     JMenuItem menuItemSketcherConfigure = makeStandardMenuItem("Configuration",
@@ -992,41 +1012,55 @@ public class IntelliFlow {
    */
   static class SketcherUtility {
     private static String editorBinary = ""
-    public static final String DEFAULT_VIEWER_ASSOCIATED_KEY = "default"
-    public static final String SKETCHER_CONFIG_FILE = "sketcher-service-config.txt"
-    public static final String SKETCHER_LOGGING_STRING = "SKETCHER: "
-    public static final String INITIAL_SUGGESTED_VIEWER_WINDOWS = "mspaint"
-    public static final String INITIAL_SUGGESTED_VIEWER_LINUX = "drawing"
+    private static final String DEFAULT_VIEWER_ASSOCIATED_KEY = "default"
+    private static final String SKETCHER_CONFIG_FILE = "sketcher-service-config.txt"
+    private static final String SKETCHER_LOGGING_STRING = "SKETCHER: "
+    private static final String INITIAL_SUGGESTED_VIEWER_WINDOWS = "mspaint"
+    private static final String INITIAL_SUGGESTED_VIEWER_LINUX = "drawing"
+
+    private static final String MAIN_TEMPLATE = "main_template"
+    private static final String TEMPLATE = "template"
     // public static boolean shouldMonitorExtProcess = false;
 
-    private static String getUserDefinedEditorBinary() {
-      String userDir = ResourceController.getResourceController().getFreeplaneUserDirectory()
+    private static String getUserDefinedEditorBinary() throws IOException {
+      String userDir = FreeplaneTools.getFreeplaneUserdir()
       String editorBinary = ""
+      List<String> lines =
+          Files.readAllLines(Paths.get(userDir, "scripts", SKETCHER_CONFIG_FILE))
+      editorBinary =
+          lines.stream().filter{ it ->
+            !it.trim().equals("") && !it.trim().startsWith("#") && !it.contains(TEMPLATE + "=")
+          }.findFirst().orElse("").trim()
+      return editorBinary.equalsIgnoreCase(DEFAULT_VIEWER_ASSOCIATED_KEY) ? "" : editorBinary
+    }
+
+    public static void run() {
+      run("")
+    }
+
+    public static void run(String templatePath) {
       try {
-        List<String> lines =
-            Files.readAllLines(Paths.get(userDir, "scripts", SKETCHER_CONFIG_FILE))
-        lines = lines.stream().filter{ it ->
-          !it.trim().equals("") && !it.trim().startsWith("#")
-        }
-        .collect(Collectors.toList())
-        if (lines.size() > 0) {
-          editorBinary = lines.get(0).trim()
-          if (editorBinary.equalsIgnoreCase(DEFAULT_VIEWER_ASSOCIATED_KEY)) {
-            editorBinary = ""
-          }
-        }
+        editorBinary = getUserDefinedEditorBinary()
       } catch (IOException e1) {
         if (Compat.isWindowsOS()) {
           editorBinary = INITIAL_SUGGESTED_VIEWER_WINDOWS
         } else if (!Compat.isMacOsX()) {
           editorBinary = INITIAL_SUGGESTED_VIEWER_LINUX
         }
+        // TODO refactor path
+        Path path = Paths.get(FreeplaneTools.getFreeplaneUserdir(), "scripts", SKETCHER_CONFIG_FILE)
+        if (Files.exists(path)) {
+          String errMsg =
+              "ERROR: The Sketcher configuration file could not be read. Defaulting to a suggested viewer. The reason could be related to script permissions. " +"\n" +
+              "Please check your Tools -> Preferences -> Plug-ins section, and make sure scripts have sufficient permissions. " +"\n" +
+              "Another reason may be the folder where the image is to be created doesn't have read permissions - in that case you'd have to modify folder permissions, " +"\n" +
+              "or move your mindmap to a folder that does have enough permissions." +
+              "\n" + "MESSAGE: " + e1.getMessage()
+          JOptionPane.showMessageDialog(UITools.getCurrentFrame(), errMsg,
+              "Configuration file error", JOptionPane.ERROR_MESSAGE)
+          System.err.println(SKETCHER_LOGGING_STRING + errMsg)
+        }
       }
-      return editorBinary
-    }
-
-    public static void run() {
-      editorBinary = getUserDefinedEditorBinary()
       File imageFile = null
 
       File mapFile = Controller.getCurrentController().getMap().getFile()
@@ -1064,9 +1098,13 @@ public class IntelliFlow {
       try {
 
         if (getExternalResource(selectedNodeModel) == null) {
-          imageFile = new File(imageDir.toFile(),
-              "sketch_" + System.currentTimeMillis() + "_" + mapName + ".png")
-          createNewPNG(imageFile)
+          if (!templatePath.isBlank()) {
+            imageFile = createCopyFromTemplate(templatePath, imageDir.toFile()).toFile()
+          } else {
+            imageFile = new File(imageDir.toFile(),
+                "sketch_" + System.currentTimeMillis() + "_" + mapName + ".png")
+            createNewPNG(imageFile)
+          }
           final URI uriRelativeOrAbsoluteAccordingToMapPrefs =
               LinkController.toLinkTypeDependantURI(mapFile, imageFile)
           try {
@@ -1074,10 +1112,18 @@ public class IntelliFlow {
             setImageZoom(node, 0.5f)
           } catch (RuntimeException e) {
             JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
-                "It was not possible to sketch on this node. If this node already has an image, it may be that the path to the image is broken or doesn't exist. Please remove the node, if necessary reassign the correct path, and try again.")
+                "It was not possible to sketch on this node. If this node already has an image, it may be that the path to the image is broken or doesn't exist. Please remove the image, if necessary reassign the correct path, and try again.")
+            launch(launchMode, editor)
             return
           }
         } else {
+          if (!templatePath.isBlank()) {
+            JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
+                "This node already has an image. To create an image from scratch, please use a node that does not have an image.")
+            launch(launchMode, editor)
+            return
+          }
+
           URI uri = getExternalResource(selectedNodeModel).getUri()
           uri = uri.isAbsolute() ? uri
               : mapDir.toURI().resolve(getExternalResource(selectedNodeModel).getUri())
@@ -1102,7 +1148,13 @@ public class IntelliFlow {
       } catch (IOException e) {
         e.printStackTrace()
         JOptionPane.showMessageDialog(UITools.getCurrentFrame(),
-            "It was not possible to create a new sketch image. The reason could be related to script permissions. Please check your Tools -> Preferences -> Plug-ins section, and make sure scripts have sufficient permissions. Another reason may be the folder where the image is to be created doesn't have write permissions - in that case you'd have to modify folder permissions, or move your mindmap to a folder that does have enough permissions.")
+            "It was not possible to create a new sketch image. The reason could be related to script permissions. " +
+            "Please check your Tools -> Preferences -> Plug-ins section, and make sure scripts have sufficient permissions. " +
+            "Another reason may be the folder where the image is to be created doesn't have write permissions - in that case you'd have to modify folder permissions, " +
+            "or move your mindmap to a folder that does have enough permissions. " +
+            System.lineSeparator() +
+            "If you tried to create a new image using a template, please make sure that the template at the configured path exists. " +
+            templatePath.trim())
       }
 
       // System.out.println(file.toString());
@@ -1395,17 +1447,104 @@ public class IntelliFlow {
       }
       return menuItems.toArray(new JMenuItem[0])
     }
-  }
 
+    private static Path createCopyFromTemplate(String templatePath, File targetFolder)
+    throws IOException {
+      File templateFile = new File(templatePath)
+      Path copied = Paths.get(targetFolder.getPath(),
+          System.currentTimeMillis() + "_" + templateFile.getName())
+      Path originalPath = templateFile.toPath()
+      return Files.copy(originalPath, copied)
+    }
+
+    static JMenuItem[] getUserTemplatesMenu() {
+      return getUserDefinedTemplates().map{ line ->
+        return getMenuForTemplate(line)
+      }.toArray(JMenuItem.class)
+    }
+
+    private static JMenuItem getMenuForTemplate(String configFileline) {
+      int index = configFileline.indexOf(MAIN_TEMPLATE) >= 0
+          ? configFileline.indexOf(MAIN_TEMPLATE) + MAIN_TEMPLATE.length()
+          : configFileline.indexOf(TEMPLATE) + TEMPLATE.length()
+      index += 1 // to account for "="
+      String path = configFileline.substring(index).trim()
+      File file = new File(path)
+      JMenuItem menuItem =
+          makeStandardMenuItem("Create from Template: " + file.getName(), "", {
+            run(path)
+          })
+      menuItem.setToolTipText(path)
+      return menuItem
+    }
+
+    private static JMenuItem getMainOrFirstTemplate() {
+      Optional<JMenuItem> userMainTemplateMenu = getUserMainTemplateMenu()
+      return userMainTemplateMenu.orElse(
+          getUserDefinedTemplates().findFirst().map{ it ->
+            getMenuForTemplate(it)
+          }.orElse(null)
+          )
+    }
+
+    private static Optional<JMenuItem> getUserMainTemplateMenu() {
+      String userDir = FreeplaneTools.getFreeplaneUserdir()
+      JMenuItem menu = null
+      try {
+        List<String> lines =
+            Files.readAllLines(Paths.get(userDir, "scripts", SKETCHER_CONFIG_FILE))
+
+        String userMainTempl = lines.stream()
+            .filter{it -> !it.trim().equals("") && it.trim().startsWith(MAIN_TEMPLATE + "=")}
+            .findFirst().orElse(null)
+        if (userMainTempl != null) {
+          menu = getMenuForTemplate(userMainTempl)
+        }
+      } catch (IOException e1) {
+      }
+      return Optional.ofNullable(menu)
+    }
+
+    private static Stream<String> getUserDefinedTemplates() {
+      String userDir = FreeplaneTools.getFreeplaneUserdir()
+      try {
+        List<String> lines =
+            Files.readAllLines(Paths.get(userDir, "scripts", SKETCHER_CONFIG_FILE))
+        return lines.stream().filter{ it ->
+          !it.trim().equals("") && (it.trim().startsWith(TEMPLATE + "=") || it.trim().startsWith(MAIN_TEMPLATE + "="))
+        }
+      } catch (IOException e1) {
+      }
+      return Stream.empty()
+    }
+
+    private static String prevalidateSketcher() {
+      String bin = ""
+      try {
+        bin = getUserDefinedEditorBinary()
+      } catch (IOException e) {
+        if (Compat.isWindowsOS()) {
+          bin = INITIAL_SUGGESTED_VIEWER_WINDOWS
+        } else if (!Compat.isMacOsX()) {
+          bin = INITIAL_SUGGESTED_VIEWER_LINUX
+        }
+      }
+      if (bin.equals("")) {
+        return "Sketch drawing on node using: default viewer"
+      }
+      return "Sketch drawing on node using: " +
+          (!bin.contains(".") ? bin : new File(bin).getName())
+    }
+  }
   // ---------------------------------------------------------------
   // EXTERNAL DEPENDENCIES
   // ---------------------------------------------------------------
 
   /**
    * The methods in this class are derived/copied from the library "Freeplane Helper Library":
-   * 
+   *
    * Github: https://github.com/i-plasm/freeplane-helper-library
-   * 
+   *
    */
   public static class FreeplaneTools {
 
@@ -1822,7 +1961,7 @@ public class IntelliFlow {
 
   /**
    * The methods in this class are derived/copied from the external "jhelperutils" library:
-   * 
+   *
    * Github: https://github.com/i-plasm/jhelperutils/
    */
   public static class SwingAwtTools {
@@ -1963,7 +2102,7 @@ public class IntelliFlow {
 
   /**
    * The methods in this class are derived/copied from the external "jhelperutils" library:
-   * 
+   *
    * Github: https://github.com/i-plasm/jhelperutils/
    */
   public static class TextUtils {
@@ -2013,7 +2152,7 @@ public class IntelliFlow {
 
   /**
    * The methods in this class are derived/copied from the external "jhelperutils" library:
-   * 
+   *
    * Github: https://github.com/i-plasm/jhelperutils/
    */
   public static class MenuHelper {
@@ -2096,16 +2235,21 @@ public class IntelliFlow {
     }
 
     public static class DynamicMenu extends JMenu {
-      Supplier<JMenuItem[]> menuItemGenerator
+      private Supplier<JMenuItem[]> menuItemGenerator
+      private boolean addSeparators
 
-      public DynamicMenu(String text, Supplier<JMenuItem[]> menuItemGenerator) {
+      public DynamicMenu(String text, Supplier<JMenuItem[]> menuItemGenerator,
+      boolean addSeparators) {
         super(text)
         this.menuItemGenerator = menuItemGenerator
+        this.addSeparators = addSeparators
       }
 
       public void addDynamicItems() {
         if (menuItemGenerator.get().length > 0) {
-          this.addSeparator()
+          if (addSeparators) {
+            this.addSeparator()
+          }
         }
 
         for (JMenuItem item : menuItemGenerator.get()) {
@@ -2113,7 +2257,9 @@ public class IntelliFlow {
         }
 
         if (menuItemGenerator.get().length > 0) {
-          this.addSeparator()
+          if (addSeparators) {
+            this.addSeparator()
+          }
         }
       }
     }
