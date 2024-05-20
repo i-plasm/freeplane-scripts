@@ -1256,22 +1256,33 @@ public class IntelliFlow {
         String initialSketcherConfigFile = ""
         if (Compat.isWindowsOS()) {
           initialSketcherConfigFile = INITIAL_SUGGESTED_VIEWER_WINDOWS + System.lineSeparator() +
-              "#" + "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe" + System.lineSeparator() + "#" +
+              "#" + "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe" + System.lineSeparator + "#" +
+              "C:\\Program Files\\draw.io\\draw.io.exe" + System.lineSeparator() + "#" +
               INITIAL_SUGGESTED_VIEWER_LINUX + System.lineSeparator() + "#" +
               DEFAULT_VIEWER_ASSOCIATED_KEY
         } else if (!Compat.isMacOsX()) {
           initialSketcherConfigFile = INITIAL_SUGGESTED_VIEWER_LINUX + System.lineSeparator() +
               "#" + INITIAL_SUGGESTED_VIEWER_WINDOWS + System.lineSeparator() + "#" +
               "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe" + System.lineSeparator() + "#" +
+              "C:\\Program Files\\draw.io\\draw.io.exe" + System.lineSeparator() + "#" +
               DEFAULT_VIEWER_ASSOCIATED_KEY
         } else {
           initialSketcherConfigFile = DEFAULT_VIEWER_ASSOCIATED_KEY + System.lineSeparator() + "#" +
               INITIAL_SUGGESTED_VIEWER_WINDOWS + System.lineSeparator() + "#" +
               "C:\\Program Files\\GIMP 2\\bin\\gimp-2.10.exe" + System.lineSeparator() + "#" +
+              "C:\\Program Files\\draw.io\\draw.io.exe" + System.lineSeparator() + "#" +
               INITIAL_SUGGESTED_VIEWER_LINUX
         }
 
         initialSketcherConfigFile = initialSketcherConfigFile + System.lineSeparator() +
+            System.lineSeparator() +
+            "######################## SKETCHER ########################" +
+            System.lineSeparator() +
+            "# Info and discussion: https://github.com/freeplane/freeplane/discussions/1496" +
+            System.lineSeparator() +
+            System.lineSeparator() +
+            "####################### VIEWER #######################" +
+            System.lineSeparator() +
             "# The first uncommented line (i.e line not prefixed by the symbol '#') will be taken as the image editor command" +
             System.lineSeparator() +
             "# 'default' indicates the use of the default Image viewer in your computer environment" +
@@ -1290,7 +1301,26 @@ public class IntelliFlow {
             System.lineSeparator() +
             "# NOTE 4: (Linux) If your Freeplane installation is a FlatPak, unfortunately you can not configure a custom viewer." +
             System.lineSeparator() +
-            "# In contrast, the 'bin/portable' Freeplane version is able to use the viewer binaries of your choice."
+            "# In contrast, the 'bin/portable' Freeplane version is able to use the viewer binaries of your choice." +
+            System.lineSeparator() +
+            "# NOTE 5: (App: draw.io) For creating draw.io-editable images from scratch with Sketcher, you can configure a template" +
+            System.lineSeparator() +
+            "# pointing to a draw.io-editable PNG. To open a .PNG in draw.io using Sketcher, it must be draw.io-editable." +
+            System.lineSeparator() +
+            "# More info on Sketcher and draw.io: https://github.com/freeplane/freeplane/discussions/1496#discussioncomment-9479024 "+
+            System.lineSeparator() +
+            System.lineSeparator() +
+            "####################### TEMPLATES #######################" +
+            System.lineSeparator() +
+            "# Please check instructions for configuring templates at: " +
+            System.lineSeparator() +
+            "# https://github.com/i-plasm/freeplane-scripts/wiki/Configuring-Sketcher:-Templates" +
+            System.lineSeparator() +
+            "# Examples (you can only configure one 'main_template', and you can configure any number of 'template'" +
+            System.lineSeparator() +
+            "# main_template=<full_path_to_image_file>" +
+            System.lineSeparator() +
+            "# template=<full_path_to_image_file>"
 
         Files.write(file.toPath(), initialSketcherConfigFile.getBytes())
       } catch (IOException e) {
@@ -1338,6 +1368,15 @@ public class IntelliFlow {
           "https://github.com/i-plasm/freeplane-scripts/wiki/Configuring-Sketcher:-The-external-viewer",
           customEditorInstructionsWebsite)
       floatingPopup.add(customEditorInstructionsItem)
+
+      String templatesInstructionsWebsite = MenuHelper.floatingMenuItemUnderlinedActionHTML(
+          "Instructions for configuring templates:" +
+          "<br><i>(Instructions also in the Sketcher 'Configuration' option)</i>",
+          "https://github.com/i-plasm/freeplane-scripts/wiki/Configuring-Sketcher:-Templates")
+      JMenuItem templatesInstructionsItem = createLinkMenuItem(
+          "https://github.com/i-plasm/freeplane-scripts/wiki/Configuring-Sketcher:-Templates",
+          templatesInstructionsWebsite)
+      floatingPopup.add(templatesInstructionsItem)
 
       contentsMenuItem.addActionListener{ l ->
         launch(launchMode, editor)
