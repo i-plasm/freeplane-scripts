@@ -112,6 +112,7 @@ public class IntelliFlow {
 
   private static LaunchMode launchMode
   private static boolean userNodeToolTipsPref
+  private static String userSelectionPref
 
   private static final String LOGGING_STRING = "INTELLIFLOW_: "
   private static final String THREAD_PREFIX = "INTELLIFLOW_"
@@ -128,6 +129,8 @@ public class IntelliFlow {
 
   private static final String FREEPLANE_NODE_TOOLTIPS_PROPERTY = "show_node_tooltips"
   private static final String FREEPLANE_FOLD_ON_CLICK_INSIDE_PROPERTY = "fold_on_click_inside"
+  private static final String FREEPLANE_SELECTION_METHOD_BY_CLICK = "selection_method_by_click"
+  private static final String FREEPLANE_SELECTION_METHOD_PROPERTY = "selection_method"
 
   public static void run() {
     List<Object> launchEnvironment = determineLaunchModeAndComponent()
@@ -155,7 +158,7 @@ public class IntelliFlow {
     JPopupMenu popup = new JPopupMenu()
 
     userNodeToolTipsPref = FreeplaneTools.getBooleanProperty(FREEPLANE_NODE_TOOLTIPS_PROPERTY)
-
+    userSelectionPref= FreeplaneTools.getProperty(FREEPLANE_SELECTION_METHOD_PROPERTY)
     // Handling node core editor UI interactions
     if (launchMode == LaunchMode.ON_TEXT_COMPONENT) {
       isNodeCoreInlineEditor = editor.getClass().getName().contains("MTextController")
@@ -175,7 +178,7 @@ public class IntelliFlow {
     }
     // Handling Mode 'ON_NODE' UI interactions
     else {
-      // uiChangeWhenOnNodeMode();
+      uiChangeWhenOnNodeMode()
     }
 
     // Handling UI interactions affecting all special modes
@@ -890,6 +893,7 @@ public class IntelliFlow {
   private static void uiChangeWhenOnNodeMode() {
     if (!isSpecialUiMode())
       throw new AssertionError()
+    FreeplaneTools.setProperty(FREEPLANE_SELECTION_METHOD_PROPERTY, FREEPLANE_SELECTION_METHOD_BY_CLICK)
   }
 
   private static void restoreUiChanges() {
@@ -920,6 +924,9 @@ public class IntelliFlow {
   private static void uiRestorationWhenOnNodeMode() {
     if (!isSpecialUiMode())
       throw new AssertionError()
+    if (!userSelectionPref.equals(FREEPLANE_SELECTION_METHOD_BY_CLICK)) {
+      FreeplaneTools.setProperty(FREEPLANE_SELECTION_METHOD_PROPERTY, userSelectionPref)
+    }
   }
 
   private static void uiRestorationAllSpecialModes() {
@@ -1320,7 +1327,9 @@ public class IntelliFlow {
             System.lineSeparator() +
             "# main_template=<full_path_to_image_file>" +
             System.lineSeparator() +
-            "# template=<full_path_to_image_file>"
+            "# template=<full_path_to_image_file>" +
+            System.lineSeparator() +
+            "# IMPORTANT!: Template size must be AT LEAST 50x50 pixels, so that there are no troubles refreshing in Freeplane."
 
         Files.write(file.toPath(), initialSketcherConfigFile.getBytes())
       } catch (IOException e) {
@@ -1559,6 +1568,8 @@ public class IntelliFlow {
 
     private static String prevalidateSketcher() {
       String bin = ""
+      Optional<String> uri = Optional.ofNullable(ScriptUtils.c().getSelected().getExternalObject().getUri())
+      String prefix = uri.isEmpty() || uri.get().isBlank() ? "New Sketch" : "Sketch drawing"
       try {
         bin = getUserDefinedEditorBinary()
       } catch (IOException e) {
@@ -1569,12 +1580,13 @@ public class IntelliFlow {
         }
       }
       if (bin.equals("")) {
-        return "Sketch drawing on node using: default viewer"
+        return prefix + " on node with: default viewer"
       }
-      return "Sketch drawing on node using: " +
+      return prefix + " on node with: " +
           (!bin.contains(".") ? bin : new File(bin).getName())
     }
   }
+
   // ---------------------------------------------------------------
   // EXTERNAL DEPENDENCIES
   // ---------------------------------------------------------------
@@ -1634,6 +1646,10 @@ public class IntelliFlow {
     }
 
     public static void setProperty(String property, boolean value) {
+      ResourceController.getResourceController().setProperty(property, value)
+    }
+
+    public static void setProperty(String property, String value) {
       ResourceController.getResourceController().setProperty(property, value)
     }
 
