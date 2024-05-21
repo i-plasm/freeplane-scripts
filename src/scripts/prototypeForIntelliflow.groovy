@@ -118,7 +118,7 @@ public class IntelliFlow {
   private static final String THREAD_PREFIX = "INTELLIFLOW_"
   private static final String MENU_TEXT = "IntelliFlow"
   private static final String PLUGIN_NAME = "IntelliFlow"
-  private static final String PLUGIN_VERSION = "v0.7.0"
+  private static final String PLUGIN_VERSION = "v0.7.2"
 
   enum LaunchMode {
     ON_NODE, ON_TEXT_COMPONENT
