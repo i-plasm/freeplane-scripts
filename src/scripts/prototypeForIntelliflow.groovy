@@ -11,7 +11,7 @@ package scripts
  * IntelliFlow: Intelligent ('context-aware') menu acting like a services/command provider for
  * Freeplane.
  *
- * Copyright (C) 2023 bbarbosa
+ * Copyright (C) 2023-2024 bbarbosa
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the
  * GNU General Public License as published by the Free Software Foundation, either version 3 of the
