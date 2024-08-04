@@ -3,7 +3,7 @@
 package scripts
 
 /*
- * Info & Discussion:
+ * Info & Discussion: https://github.com/freeplane/freeplane/discussions/1948
  *
  * Last Update: 2024-08-03
  *
