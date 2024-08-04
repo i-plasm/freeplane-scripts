@@ -5,14 +5,14 @@ package scripts
 /*
  * Info & Discussion:
  *
- * Last Update: 2024-07-31
+ * Last Update: 2024-08-03
  *
  * ---------
  *
  * ImgInspector: Freeplane auto-launching popup tool that provides convenient image previewing
  * functionalities.
  *
- * Copyright (C) 2023-2024 bbarbosa
+ * Copyright (C) 2024 bbarbosa
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the
  * GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -31,34 +31,48 @@ package scripts
 import java.awt.AWTEvent
 import java.awt.Color
 import java.awt.Component
+import java.awt.Desktop
+import java.awt.Dimension
 import java.awt.FlowLayout
+import java.awt.GraphicsConfiguration
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
 import java.awt.KeyboardFocusManager
 import java.awt.Point
+import java.awt.Rectangle
 import java.awt.Toolkit
 import java.awt.datatransfer.Clipboard
 import java.awt.datatransfer.StringSelection
 import java.awt.event.AWTEventListener
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
+import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseListener
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
+import java.awt.event.WindowFocusListener
 import java.util.function.Predicate
+import javax.swing.AbstractAction
+import javax.swing.Action
 import javax.swing.JButton
+import javax.swing.JComponent
 import javax.swing.JFrame
 import javax.swing.JLabel
 import javax.swing.JOptionPane
+import javax.swing.JPanel
 import javax.swing.JPopupMenu
+import javax.swing.JRootPane
+import javax.swing.JScrollPane
+import javax.swing.KeyStroke
 import javax.swing.SwingUtilities
 import javax.swing.Timer
-import javax.swing.ToolTipManager
 import javax.swing.UIManager
 import javax.swing.border.EmptyBorder
-import javax.swing.event.PopupMenuEvent
-import javax.swing.event.PopupMenuListener
+import javax.swing.event.AncestorEvent
+import javax.swing.event.AncestorListener
 import org.freeplane.api.Node
 import org.freeplane.features.mode.Controller
 import org.freeplane.plugin.script.proxy.ScriptUtils
@@ -68,7 +82,7 @@ import org.freeplane.view.swing.map.NodeView
 new ImgInspector().init()
 
 /**
- * Most classes used have been duplicated or derived from classes from the "jHelperUtils"
+ * Most classes used have been derived from classes from the "jHelperUtils"
  * library
  *
  * Github: https://github.com/i-plasm/jhelperutils/
@@ -76,6 +90,7 @@ new ImgInspector().init()
  */
 public class ImgInspector {
 
+  private static final String EXTENSION_NAME = "ImgInspector"
   private ImgAWTEventListener<BitmapViewerComponent> listener
 
   public void stop() {
@@ -98,14 +113,6 @@ public class ImgInspector {
 
     @Override
     public void eventDispatched(AWTEvent e) {
-      if (e.getID() == MouseEvent.MOUSE_PRESSED && isWindows() &&
-          e.getSource().getClass().getName()
-          .contains("javax.swing.PopupFactory\$MediumWeightPopup\$MediumWeightComponent") &&
-          popup.isCurrentlyDisplayingPreviewTip()) {
-        ViewerPopup.previewFullSize(popup.getCurrentImage(), popup.getImgBackground())
-        return
-      }
-
       Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner()
       boolean isAnotherWindowOnTop = focusOwner != null &&
           SwingUtilities.getWindowAncestor((Component) e.getSource()) != SwingUtilities
@@ -156,7 +163,6 @@ public class ImgInspector {
 
     HoverButton btnPreview
     Component hookedComponent
-    private boolean isCurrentlyDisplayingPreviewTip = false
     private String previousImage
     private String currentImage
     private String imgBackground
@@ -173,49 +179,14 @@ public class ImgInspector {
       btnCopyPath.setToolTipText("Copy Image URL")
 
       // unicode Left-Pointing Magnifying Glass button
-      btnPreview = new HoverButton("<html><p><font size=12>&#128269;</font></p></html>") {
+      btnPreview = new HoverButton("<html><p><font size=12>&#128269;</font></p></html>")
 
-            @Override
-            public Point getToolTipLocation(MouseEvent event) {
-              Point p = btnPreview.getLocationOnScreen()
-              java.awt.MouseInfo.getPointerInfo().getLocation()
-
-              SwingUtilities.convertPointFromScreen(p, btnPreview)
-
-              JFrame dummyHiddenFrame = getDummyFrame()
-
-              p = new Point((int) (p.x + btnPreview.getBounds().width - btnPreview.getBounds().width / 4), (int) (p.y +
-                  btnPreview.getBounds().height / 2 - dummyHiddenFrame.getPreferredSize().height / 2))
-              dummyHiddenFrame.dispose()
-              return p
-            }
-
-            private JFrame getDummyFrame() {
-              String previousImage = ViewerPopup.this.previousImage
-              String currentImage = ViewerPopup.this.currentImage
-              // if (dummyHiddenFrame != null && previousImage != null &&
-              // currentImage.equals(previousImage)) {
-              // return dummyHiddenFrame;
-              // }
-              ViewerPopup.this.previousImage = currentImage
-              JLabel label = new JLabel(imageHTML(currentImage))
-              JFrame dummyHiddenFrame = new JFrame()
-              dummyHiddenFrame.add(label)
-              dummyHiddenFrame.pack()
-              return dummyHiddenFrame
-            }
-          }
-
-      btnPreview.addActionListener{ l ->
-        previewFullSize(getCurrentImage(), ViewerPopup.this.getImgBackground())
-      }
       btnCopyPath.addActionListener{ l ->
         copyURL()
       }
       btnInfo.addActionListener{ l ->
         displayHelp()
       }
-      final int defaultInitialDelay = ToolTipManager.sharedInstance().getInitialDelay()
 
       MouseAdapter exitAdapter = new MouseAdapter() {
 
@@ -235,7 +206,7 @@ public class ImgInspector {
               SwingUtilities.convertPointFromScreen(p, popup)
 
               if (popup != null && !isPointContainedInHookedComp &&
-                  !popup.getVisibleRect().contains(p) && !isCurrentlyDisplayingPreviewTip) {
+                  !popup.getVisibleRect().contains(p)) {
                 popup.setVisible(false)
               }
             }
@@ -244,43 +215,15 @@ public class ImgInspector {
       btnPreview.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-              ToolTipManager.sharedInstance().setInitialDelay(0)
-              btnPreview.setToolTipText(imageHTMLWithBgColor(ViewerPopup.this.getCurrentImage(),
-                  ViewerPopup.this.getImgBackground()))
-              isCurrentlyDisplayingPreviewTip = true
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-              Point p = java.awt.MouseInfo.getPointerInfo().getLocation()
-              SwingUtilities.convertPointFromScreen(p, btnPreview)
-              if (btnPreview.getVisibleRect().contains(p)) {
-                return
-              }
-              hidePreviewToolTip(defaultInitialDelay)
+              JFrame hoverWindow = createHoverWindow(ViewerPopup.this.getCurrentImage(),
+                  ViewerPopup.this.getImgBackground(), ViewerPopup.this.getSuggstedPreviewLocation(),
+                  SwingUtilities.getWindowAncestor(ViewerPopup.this).getGraphicsConfiguration())
+              hoverWindow.setVisible(true)
             }
           })
 
       btnInfo.addMouseListener(exitAdapter)
       btnCopyPath.addMouseListener(exitAdapter)
-
-      addPopupMenuListener(new PopupMenuListener() {
-
-            @Override
-            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {}
-
-            @Override
-            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
-              if (isCurrentlyDisplayingPreviewTip) {
-                hidePreviewToolTip(defaultInitialDelay)
-              }
-            }
-
-            @Override
-            public void popupMenuCanceled(PopupMenuEvent e) {
-              hidePreviewToolTip(defaultInitialDelay)
-            }
-          })
 
       this.add(btnPreview)
       this.add(btnCopyPath)
@@ -320,19 +263,19 @@ public class ImgInspector {
 
     private void displayHelp() {
       int result = JOptionPane.showConfirmDialog(SwingUtilities.getWindowAncestor(ViewerPopup.this),
-          "Click 'OK' to learn more about this extension, and get updates on Github.",
-          "Information & Help", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE)
+          "Click 'OK' to learn more about " + EXTENSION_NAME + ", and get updates on Github.",
+          EXTENSION_NAME + " - Information & Help", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE)
 
       if (result == JOptionPane.OK_OPTION) {
+        Desktop desktop = Desktop.isDesktopSupported() ? Desktop.getDesktop() : null
+        if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
+          try {
+            desktop.browse(new URI("https://github.com/freeplane/freeplane/discussions"))
+          } catch (Exception e) {
+            e.printStackTrace()
+          }
+        }
       }
-    }
-
-    private void hidePreviewToolTip(final int defaultDismissTimeout) {
-      btnPreview.setToolTipText("")
-      ToolTipManager.sharedInstance().mouseMoved(
-          new MouseEvent(btnPreview, -1, System.currentTimeMillis(), 0, 0, 0, 0, 0, 0, false, 0))
-      ToolTipManager.sharedInstance().setInitialDelay(defaultDismissTimeout)
-      isCurrentlyDisplayingPreviewTip = false
     }
 
     public void hookToComponent(Component component) {
@@ -342,10 +285,6 @@ public class ImgInspector {
       this.currentImage = compImg
       this.imgBackground = getBackgroundColor()
       setVisible(false)
-    }
-
-    public boolean isCurrentlyDisplayingPreviewTip() {
-      return isCurrentlyDisplayingPreviewTip
     }
 
     public Component getHookedComponent() {
@@ -368,7 +307,13 @@ public class ImgInspector {
     private URI getImageURI() {
       NodeView nodeView =
           (NodeView) SwingUtilities.getAncestorOfClass(NodeView.class, hookedComponent)
-      Node node = ScriptUtils.node().getMap().node(nodeView.getModel().createID())
+      Node node
+      //TODO diff freeplane versions : nodeView.getModel() vs. nodeView.getNode()
+      try {
+        node = ScriptUtils.node().getMap().node(nodeView.getModel().createID())
+      } catch (Exception e1) {
+        node = ScriptUtils.node().getMap().node(nodeView.getNode().createID())
+      }
       URI uri = null
 
       try {
@@ -393,16 +338,205 @@ public class ImgInspector {
       return "<html><body style=\"background-color:" + bgColor + ";\">" + str + "</body></html>"
     }
 
-    static void previewFullSize(String imgUrl, String bgColor) {
+    public static Rectangle getMaxWindowBounds(GraphicsConfiguration config) {
+      Rectangle bounds = null
+      bounds = config.getBounds()
+      Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(config)
+      System.out.println("bounds" + bounds.x + "; " + bounds.y + ";  width:" + bounds.width +
+          "; height: " + bounds.height)
+      System.out.println("insets" + "left: " + insets.left + " ; right: " + insets.right +
+          "; top: " + insets.top + "; bottom: " + insets.bottom)
+      bounds.x += insets.left
+      bounds.y += insets.top
+      bounds.width -= insets.left + insets.right
+      bounds.height -= insets.top + insets.bottom
+
+
+      return bounds
+    }
+
+    static JFrame createHoverWindow(String imgUrl, String bgColor, Point suggestedLocation,
+        GraphicsConfiguration config) {
+      String html = imageHTMLWithBgColor(imgUrl, bgColor)
+      JLabel label = new JLabel(html)
+      JFrame frame
+      JFrame dummyFrame = new JFrame()
+      // frame.setName(PREVIEW_COMP_NAME);
+
+      dummyFrame.setLayout(new FlowLayout(FlowLayout.CENTER))
+      dummyFrame.add(label)
+      dummyFrame.pack()
+      Rectangle maxBounds = getMaxWindowBounds(config)
+      Rectangle dummyFrameBounds = dummyFrame.getBounds()
+      boolean isImgShowingFully = dummyFrame.getBounds().width < maxBounds.width && dummyFrame.getBounds().height < maxBounds.height
+      dummyFrame.dispose()
+
+      if (!isImgShowingFully) {
+        frame = new JFrame()
+        // frame.setName(PREVIEW_COMP_NAME);
+        final JPanel panel = new JPanel() {
+              @Override
+              public Dimension getPreferredSize() {
+                //TODO groovy cast to int
+                return new Dimension((int) label.getBounds().width, (int) label.getBounds().height)
+              }
+            }
+
+        panel.add(label)
+        JScrollPane scrollPane = new JScrollPane(panel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+            JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED)
+
+        label.addMouseListener(new MouseAdapter() {
+              @Override
+              public void mouseClicked(MouseEvent e) {
+                int width = frame.getWidth()
+                int height = frame.getHeight()
+                Point location = frame.getLocation()
+                frame.setVisible(false)
+                frame.dispose()
+                previewFullSize(imgUrl, bgColor, width, height, location)
+              }
+
+              @Override
+              public void mouseExited(MouseEvent e) {
+                if (!label.isShowing()) {
+                  return
+                }
+                if ((e.getLocationOnScreen().y < label.getLocationOnScreen().y) ||
+                    (e.getLocationOnScreen().y < scrollPane.getViewportBorderBounds().y)) {
+                  frame.setVisible(false)
+                  frame.dispose()
+                }
+              }
+            })
+
+        frame.addWindowListener(new WindowAdapter() {
+
+              @Override
+              public void windowDeactivated(WindowEvent e) {
+                if (frame.isVisible()) {
+                  frame.setVisible(false)
+                  frame.dispose()
+                }
+              }
+            })
+        frame.addWindowFocusListener(new WindowFocusListener() {
+              @Override
+              public void windowLostFocus(WindowEvent e) {
+                if (frame.isVisible()) {
+                  frame.setVisible(false)
+                  frame.dispose()
+                }
+              }
+
+              @Override
+              public void windowGainedFocus(WindowEvent e) {}
+            })
+
+        frame.add(scrollPane)
+        frame.setUndecorated(true)
+        // TODO groovy cast to int
+        frame.setSize((int) maxBounds.width, (int) maxBounds.height)
+        // frame.pack();
+        frame.setLocation(0, 0)
+      } else {
+        frame = new JFrame()
+        // frame.setName(PREVIEW_COMP_NAME);
+        frame.setUndecorated(true)
+        frame.setLayout(new FlowLayout(FlowLayout.CENTER))
+        frame.add(label)
+
+
+        int x = maxBounds.width > dummyFrameBounds.width + suggestedLocation.x ? suggestedLocation.x
+            : maxBounds.width - dummyFrameBounds.width
+        int y =
+            maxBounds.height > dummyFrameBounds.height + suggestedLocation.y ? suggestedLocation.y
+            : maxBounds.height - dummyFrameBounds.height
+
+        frame.setLocation(x, y)
+        frame.pack()
+
+        label.addMouseListener(new MouseAdapter() {
+              @Override
+              public void mouseExited(MouseEvent e) {
+                frame.setVisible(false)
+                frame.dispose()
+              }
+
+              @Override
+              public void mouseClicked(MouseEvent e) {
+                Point location = frame.getLocation()
+                frame.setVisible(false)
+                frame.dispose()
+                previewFullSize(imgUrl, bgColor, maxBounds, location)
+              }
+            })
+      }
+
+      addEscapeListener(frame)
+      return frame
+    }
+
+    public Point getSuggstedPreviewLocation() {
+      return btnPreview.getLocationOnScreen()
+    }
+
+    public static void addEscapeListener(JFrame frame) {
+      Action dispatchClosing = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+              frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING))
+            }
+          }
+
+      KeyStroke escape = KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0)
+      JRootPane rootPane = frame.getRootPane()
+      rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(escape, "closeWindow")
+      rootPane.getActionMap().put("closeWindow", dispatchClosing)
+    }
+
+    static void previewFullSize(String imgUrl, String bgColor, Rectangle maxBounds,
+        Point suggestedLocation) {
       String html = imageHTMLWithBgColor(imgUrl, bgColor)
       JLabel label = new JLabel(html)
       JFrame frame
       frame = new JFrame()
       frame.setName(PREVIEW_COMP_NAME)
-      frame.setLayout(new FlowLayout(FlowLayout.CENTER))
-      frame.add(label)
+      final JPanel panel = new JPanel()
+      panel.add(label)
+      JScrollPane scrollPane = new JScrollPane(panel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+          JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED)
+      frame.add(scrollPane)
+      frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE)
+      addEscapeListener(frame)
       frame.pack()
-      frame.setLocationRelativeTo(null)
+      int x = maxBounds.width > frame.getBounds().width + suggestedLocation.x ? suggestedLocation.x
+          : maxBounds.width - frame.getBounds().width
+      int y =
+          maxBounds.height > frame.getBounds().height + suggestedLocation.y ? suggestedLocation.y
+          : maxBounds.height - frame.getBounds().height
+
+      frame.setLocation(new Point(x, y))
+      frame.setVisible(true)
+    }
+
+    static void previewFullSize(String imgUrl, String bgColor, int width, int height,
+        Point location) {
+      String html = imageHTMLWithBgColor(imgUrl, bgColor)
+      JLabel label = new JLabel(html)
+      JFrame frame
+      frame = new JFrame()
+      frame.setName(PREVIEW_COMP_NAME)
+      final JPanel panel = new JPanel()
+      panel.add(label)
+      JScrollPane scrollPane = new JScrollPane(panel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
+          JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED)
+      frame.add(scrollPane)
+      frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE)
+      addEscapeListener(frame)
+      frame.pack()
+      frame.setSize(width, height)
+      frame.setLocation(location)
       frame.setVisible(true)
     }
 
@@ -423,7 +557,6 @@ public class ImgInspector {
       Color selColor = UIManager.getColor("MenuItem.selectionBackground")
 
       addMouseListener(new MouseAdapter() {
-
             @Override
             public void mouseEntered(java.awt.event.MouseEvent evt) {
               setBackground(selColor.brighter())
@@ -433,6 +566,19 @@ public class ImgInspector {
             public void mouseExited(java.awt.event.MouseEvent evt) {
               setBackground(UIManager.getColor("control"))
             }
+          })
+
+      addAncestorListener(new AncestorListener() {
+            @Override
+            public void ancestorRemoved(AncestorEvent event) {
+              setBackground(UIManager.getColor("control"))
+            }
+
+            @Override
+            public void ancestorMoved(AncestorEvent event) {}
+
+            @Override
+            public void ancestorAdded(AncestorEvent event) {}
           })
     }
   }
@@ -504,7 +650,7 @@ public class ImgInspector {
             p.y >= popup.getLocationOnScreen().y &&
             p.y <= (popup.getHeight() + popup.getLocationOnScreen().y)
 
-        if (!isPointContainedInPopup && !popup.isCurrentlyDisplayingPreviewTip()) {
+        if (!isPointContainedInPopup) {
           popup.setVisible(false)
         }
         return
@@ -517,7 +663,7 @@ public class ImgInspector {
       boolean isAnotherWindowOnTop = focusOwner != null &&
           SwingUtilities.getWindowAncestor((Component) e.getSource()) != SwingUtilities
           .getWindowAncestor(focusOwner)
-      if (popup.isShowing() || isAnotherWindowOnTop) {
+      if (popup.isShowing() || isAnotherWindowOnTop  || focusOwner == null) {
         return
       }
       viewerTimer.start()
@@ -527,13 +673,16 @@ public class ImgInspector {
     class PopupAdapter extends MouseAdapter {
       @Override
       public void mouseExited(MouseEvent e) {
+        if (!component.isShowing()) {
+          return
+        }
         Point p = java.awt.MouseInfo.getPointerInfo().getLocation()
         boolean isPointContainedInBitmapViewer = p.x >= component.getLocationOnScreen().x &&
             p.x <= (component.getWidth() + component.getLocationOnScreen().x) &&
             p.y >= component.getLocationOnScreen().y &&
             p.y <= (component.getHeight() + component.getLocationOnScreen().y)
 
-        if (!isPointContainedInBitmapViewer && !popup.isCurrentlyDisplayingPreviewTip()) {
+        if (!isPointContainedInBitmapViewer) {
           popup.setVisible(false)
         }
       }
