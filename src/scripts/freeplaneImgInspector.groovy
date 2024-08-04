@@ -270,7 +270,7 @@ public class ImgInspector {
         Desktop desktop = Desktop.isDesktopSupported() ? Desktop.getDesktop() : null
         if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
           try {
-            desktop.browse(new URI("https://github.com/freeplane/freeplane/discussions"))
+            desktop.browse(new URI("https://github.com/freeplane/freeplane/discussions/1948"))
           } catch (Exception e) {
             e.printStackTrace()
           }
