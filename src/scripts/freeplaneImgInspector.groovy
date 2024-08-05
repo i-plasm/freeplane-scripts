@@ -245,17 +245,17 @@ public class ImgInspector {
 
       Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard()
       if (clipboard == null) {
-        JOptionPane.showMessageDialog(null, "Failed to copy to clipboard", "",
+        JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(ViewerPopup.this), "Failed to copy to clipboard", "",
             JOptionPane.ERROR_MESSAGE)
         return
       }
       StringSelection sel = new StringSelection(getCurrentImage())
       try {
         clipboard.setContents(sel, null)
-        JOptionPane.showMessageDialog(null, "Copied to clipboard:\n" + getCurrentImage(), "",
+        JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(ViewerPopup.this), "Copied to clipboard:\n" + getCurrentImage(), "",
             JOptionPane.INFORMATION_MESSAGE)
       } catch (Exception e) {
-        JOptionPane.showMessageDialog(null, "Failed to copy to clipboard", "",
+        JOptionPane.showMessageDialog(SwingUtilities.getWindowAncestor(ViewerPopup.this), "Failed to copy to clipboard", "",
             JOptionPane.ERROR_MESSAGE)
         e.printStackTrace()
       }
@@ -342,10 +342,6 @@ public class ImgInspector {
       Rectangle bounds = null
       bounds = config.getBounds()
       Insets insets = Toolkit.getDefaultToolkit().getScreenInsets(config)
-      System.out.println("bounds" + bounds.x + "; " + bounds.y + ";  width:" + bounds.width +
-          "; height: " + bounds.height)
-      System.out.println("insets" + "left: " + insets.left + " ; right: " + insets.right +
-          "; top: " + insets.top + "; bottom: " + insets.bottom)
       bounds.x += insets.left
       bounds.y += insets.top
       bounds.width -= insets.left + insets.right
@@ -360,7 +356,7 @@ public class ImgInspector {
       String html = imageHTMLWithBgColor(imgUrl, bgColor)
       JLabel label = new JLabel(html)
       JFrame frame
-      JFrame dummyFrame = new JFrame()
+      JFrame dummyFrame = new JFrame(config)
       // frame.setName(PREVIEW_COMP_NAME);
 
       dummyFrame.setLayout(new FlowLayout(FlowLayout.CENTER))
@@ -372,7 +368,7 @@ public class ImgInspector {
       dummyFrame.dispose()
 
       if (!isImgShowingFully) {
-        frame = new JFrame()
+        frame = new JFrame(config)
         // frame.setName(PREVIEW_COMP_NAME);
         final JPanel panel = new JPanel() {
               @Override
@@ -385,6 +381,20 @@ public class ImgInspector {
         panel.add(label)
         JScrollPane scrollPane = new JScrollPane(panel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
             JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED)
+
+        panel.addMouseListener(new MouseAdapter() {
+              @Override
+              public void mouseExited(MouseEvent e) {
+                if (!panel.isShowing()) {
+                  return
+                }
+                if ((e.getLocationOnScreen().y < panel.getLocationOnScreen().y) ||
+                    (e.getLocationOnScreen().y < scrollPane.getViewportBorderBounds().y)) {
+                  frame.setVisible(false)
+                  frame.dispose()
+                }
+              }
+            })
 
         label.addMouseListener(new MouseAdapter() {
               @Override
@@ -438,20 +448,21 @@ public class ImgInspector {
         // TODO groovy cast to int
         frame.setSize((int) maxBounds.width, (int) maxBounds.height)
         // frame.pack();
-        frame.setLocation(0, 0)
+        // TODO groovy cast to int
+        frame.setLocation((int) maxBounds.x, (int) maxBounds.y)
       } else {
-        frame = new JFrame()
+        frame = new JFrame(config)
         // frame.setName(PREVIEW_COMP_NAME);
         frame.setUndecorated(true)
         frame.setLayout(new FlowLayout(FlowLayout.CENTER))
         frame.add(label)
 
-
-        int x = maxBounds.width > dummyFrameBounds.width + suggestedLocation.x ? suggestedLocation.x
-            : maxBounds.width - dummyFrameBounds.width
-        int y =
-            maxBounds.height > dummyFrameBounds.height + suggestedLocation.y ? suggestedLocation.y
-            : maxBounds.height - dummyFrameBounds.height
+        int x = maxBounds.x + maxBounds.width > suggestedLocation.x + dummyFrame.getWidth()
+            ? suggestedLocation.x
+            : maxBounds.x + maxBounds.width - dummyFrame.getWidth()
+        int y = maxBounds.y + maxBounds.height > suggestedLocation.y + dummyFrame.getHeight()
+            ? suggestedLocation.y
+            : maxBounds.y + maxBounds.height - dummyFrame.getHeight()
 
         frame.setLocation(x, y)
         frame.pack()
@@ -468,7 +479,7 @@ public class ImgInspector {
                 Point location = frame.getLocation()
                 frame.setVisible(false)
                 frame.dispose()
-                previewFullSize(imgUrl, bgColor, maxBounds, location)
+                previewFullSize(imgUrl, bgColor, maxBounds, location, config)
               }
             })
       }
@@ -496,11 +507,11 @@ public class ImgInspector {
     }
 
     static void previewFullSize(String imgUrl, String bgColor, Rectangle maxBounds,
-        Point suggestedLocation) {
+        Point suggestedLocation,  GraphicsConfiguration config) {
       String html = imageHTMLWithBgColor(imgUrl, bgColor)
       JLabel label = new JLabel(html)
       JFrame frame
-      frame = new JFrame()
+      frame = new JFrame(config)
       frame.setName(PREVIEW_COMP_NAME)
       final JPanel panel = new JPanel()
       panel.add(label)
@@ -510,13 +521,7 @@ public class ImgInspector {
       frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE)
       addEscapeListener(frame)
       frame.pack()
-      int x = maxBounds.width > frame.getBounds().width + suggestedLocation.x ? suggestedLocation.x
-          : maxBounds.width - frame.getBounds().width
-      int y =
-          maxBounds.height > frame.getBounds().height + suggestedLocation.y ? suggestedLocation.y
-          : maxBounds.height - frame.getBounds().height
-
-      frame.setLocation(new Point(x, y))
+      frame.setLocation(suggestedLocation)
       frame.setVisible(true)
     }
 
