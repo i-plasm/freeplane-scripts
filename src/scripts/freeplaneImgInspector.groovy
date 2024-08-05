@@ -5,7 +5,7 @@ package scripts
 /*
  * Info & Discussion: https://github.com/freeplane/freeplane/discussions/1948
  *
- * Last Update: 2024-08-03
+ * Last Update: 2024-08-05
  *
  * ---------
  *
