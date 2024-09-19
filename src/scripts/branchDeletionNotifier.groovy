@@ -28,6 +28,16 @@ package scripts
  *
  */
 
+/*
+ * Some of the classes used have been derived from classes from the "jHelperUtils"
+ * library
+ *
+ * Github: https://github.com/i-plasm/jhelperutils/
+ * 
+ * License: https://github.com/i-plasm/jhelperutils/blob/main/LICENSE
+ *
+ */
+
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -44,6 +54,7 @@ import java.awt.Point
 import java.awt.Rectangle
 import java.awt.RenderingHints
 import java.awt.Toolkit
+import java.awt.Window
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
 import java.awt.event.MouseAdapter
@@ -73,25 +84,35 @@ import org.freeplane.features.map.IMapChangeListener
 import org.freeplane.features.map.NodeDeletionEvent
 import org.freeplane.features.map.NodeModel
 import org.freeplane.features.mode.Controller
+import groovy.transform.Field
+
+@Field static boolean hasBeenStarted = false
+
+if (hasBeenStarted) {
+  FreeplaneBranchDeletionNotifier.SwingNotifications.getInstance().showLatestNotification()
+  return
+}
 
 try {
-  new FreeplaneDeletionNotifier(UITools.isLightLookAndFeelInstalled())
+  new FreeplaneBranchDeletionNotifier(UITools.isLightLookAndFeelInstalled())
 }
 catch (Exception e) {
   boolean useLightLaf = UIManager.getLookAndFeel() != null && UIManager.getLookAndFeel().getName().toLowerCase().contains("dar") ? false: true
-  new FreeplaneDeletionNotifier(useLightLaf)
+  new FreeplaneBranchDeletionNotifier(useLightLaf)
 }
 
-public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener {
+hasBeenStarted = true
 
-  private int deletionThreshold = 2 // min number of deleted branch node count
+public class FreeplaneBranchDeletionNotifier implements IExtension, IMapChangeListener {
+
+  private Integer deletionThreshold = 2 // min number of deleted branch node count
   private boolean shouldBeep = true
   private static int allDeletedNodesCounter = 0
   private Map<String, String> parentsOfDeleted = new HashMap<>()
 
-  public FreeplaneDeletionNotifier(boolean isLightLookAndFeel) {
+  public FreeplaneBranchDeletionNotifier(boolean isLightLookAndFeel) {
     if (isLightLookAndFeel) {
-      SwingNotifications.getInstance().setGradientColors(new Color(73, 135, 200).brighter(), new Color(255, 255, 255),
+      SwingNotifications.getInstance().setGradientColors(new Color(73, 135, 200), new Color(255, 255, 255),
           SwingNotifications.MessageType.INFO)
     } else {
       SwingNotifications.getInstance().setGradientColors(new Color(73, 135, 200).darker().darker(),
@@ -158,6 +179,9 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
     return countBranchNodes(node, 1)
   }
 
+  public void setDeletionThreshold(Integer deletionThreshold) {
+    this.deletionThreshold = deletionThreshold
+  }
 
   static class GradientJPanel extends JPanel {
 
@@ -252,6 +276,7 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
 
   static class SwingNotifications {
 
+
     enum Location {
       TOP_LEFT, TOP_CENTER, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_CENTER, BOTTOM_RIGHT
     }
@@ -274,6 +299,7 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
     private final JPanel glass
 
     private int calculatedMinHeight
+    private boolean isMaximizedState
 
     private static final int SECONDS = 5
     private static final int WIDTH = 300
@@ -306,9 +332,10 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
       }
 
       auxFrame = new JFrame()
+      auxFrame.setType(Window.Type.POPUP)
       auxFrame.setUndecorated(true)
       auxFrame.setAlwaysOnTop(true)
-      auxFrame.setAutoRequestFocus(false)
+      auxFrame.setAutoRequestFocus(true)
       auxFrame.setLocationRelativeTo(null)
       auxFrame.setFocusableWindowState(false)
 
@@ -456,12 +483,20 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
       launchNotification(text, caption, callerApp, type, 0, true)
     }
 
+    private void contractNotification(String text, String caption, String callerApp,
+        MessageType type) {
+      launchNotification(text, caption, callerApp, type, 80, true)
+    }
+
     private void launchNotification(String text, String caption, String callerApp, MessageType type,
         int truncateSize, boolean isReshowOfNotification) {
       timer.stop()
-      auxFrame.setVisible(false)
-      auxFrame.dispose()
+      if (auxFrame.isVisible() && (truncateSize > 0 || !isReshowOfNotification)) {
+        auxFrame.setVisible(false)
+        auxFrame.dispose()
+      }
       if (!isReshowOfNotification) {
+        isMaximizedState = false
         NotificationData.add(text, caption, callerApp, new Date(), type)
       }
 
@@ -497,7 +532,7 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
 
       NotificationPosition pos = new NotificationPosition(location,
           new Dimension(WIDTH, auxFrame.getHeight()), auxFrame.getGraphicsConfiguration())
-      //TODO groovy cast to int
+      // TODO groovy cast to int
       auxFrame.setLocation((int) pos.effectiveCoordinates.x, (int) pos.effectiveCoordinates.y)
       auxFrame.setVisible(true)
 
@@ -512,7 +547,13 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
               boolean isInsideAppTitle = isPointInsideComponent(e, callerAppPane)
               boolean isInsideCaption = isPointInsideComponent(e, subjectPane)
               if (isInsideExpandButton) {
-                expandNotification(text, caption, callerApp, type)
+                if (!isMaximizedState) {
+                  isMaximizedState = true
+                  expandNotification(text, caption, callerApp, type)
+                } else {
+                  isMaximizedState = false
+                  contractNotification(text, caption, callerApp, type)
+                }
               } else if (isInsideCaption) {
                 displayLog()
               } else {
@@ -590,8 +631,8 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
 
       @Override
       public String toString() {
-        return "\n" + "DATE: " + date.toString() + "\n" + "CALLER: " + callerApp + "\n" + "CAPTION: " +
-            caption + "\n" + "TEXT: " + text
+        return "\n" + "DATE: " + date.toString() + "\n" + "CALLER: " + callerApp + "\n" +
+            "CAPTION: " + caption + "\n" + "TEXT: " + "\n" + text
       }
 
       public static List<NotificationData> getSessionLog() {
@@ -611,8 +652,9 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
       }
 
 
-      public static NotificationData getLatestNotification() {
-        return NOTIFICATIONS_LOG.get(0)
+      public static Optional<NotificationData> getLatestNotification() {
+        return NOTIFICATIONS_LOG.size() > 0 ? Optional.of(NOTIFICATIONS_LOG.get(0))
+            : Optional.empty()
       }
 
       public MessageType getType() {
@@ -674,9 +716,15 @@ public class FreeplaneDeletionNotifier implements IExtension, IMapChangeListener
 
 
     public void showLatestNotification() {
-      NotificationData lastest = NotificationData.getLatestNotification()
-      launchNotification(lastest.getText(), lastest.getCaption(), lastest.getCallerApp(),
-          lastest.getType(), 80, true)
+      Optional<NotificationData> latest = NotificationData.getLatestNotification()
+      if (latest.isPresent()) {
+        NotificationData data = latest.get()
+        launchNotification(data.getText(), data.getCaption(), data.getCallerApp(), data.getType(), 80,
+            true)
+      } else {
+        JOptionPane.showMessageDialog(null,
+            "No notifications have been sent in this session so far.")
+      }
     }
 
     public void setGradientColors(Color firstColor, Color secondColor, MessageType infoMessageType) {
