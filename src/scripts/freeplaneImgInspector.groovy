@@ -5,7 +5,7 @@ package scripts
 /*
  * Info & Discussion: https://github.com/freeplane/freeplane/discussions/1948
  *
- * Last Update: 2024-08-05
+ * Last Update: 2024-09-18
  *
  * ---------
  *
@@ -91,10 +91,13 @@ new ImgInspector().init()
 public class ImgInspector {
 
   private static final String EXTENSION_NAME = "ImgInspector"
+  private static final String PLUGIN_VERSION = "v0.8.5"
+
   private ImgAWTEventListener<BitmapViewerComponent> listener
 
   public void stop() {
     Toolkit.getDefaultToolkit().removeAWTEventListener(listener)
+    //ZoomablePreview.EXECUTOR.shutdown()
   }
 
   public void init() {
@@ -113,6 +116,10 @@ public class ImgInspector {
 
     @Override
     public void eventDispatched(AWTEvent e) {
+      if (!(e.getSource() instanceof Component)) {
+        return
+      }
+
       Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner()
       boolean isAnotherWindowOnTop = focusOwner != null &&
           SwingUtilities.getWindowAncestor((Component) e.getSource()) != SwingUtilities
@@ -124,12 +131,10 @@ public class ImgInspector {
       Component component = (Component) e.getSource()
 
       if (popup.hookedComponent != null && popup.hookedComponent != component) {
-        if (popup.hookedComponent.getMouseListeners() != null) {
-          for (MouseListener l : popup.hookedComponent.getMouseListeners()) {
-            if (l instanceof ImageViewerListener) {
-              popup.hookedComponent.removeMouseListener(l)
-              break
-            }
+        for (MouseListener l : popup.hookedComponent.getMouseListeners()) {
+          if (l instanceof ImageViewerListener) {
+            popup.hookedComponent.removeMouseListener(l)
+            break
           }
         }
       } else if (popup.hookedComponent != null && popup.hookedComponent == component) {
@@ -263,7 +268,8 @@ public class ImgInspector {
 
     private void displayHelp() {
       int result = JOptionPane.showConfirmDialog(SwingUtilities.getWindowAncestor(ViewerPopup.this),
-          "Click 'OK' to learn more about " + EXTENSION_NAME + ", and get updates on Github.",
+          "Click 'OK' to learn more about " + EXTENSION_NAME + ", and get updates on Github." +
+          "\n\n" + "Version: " + PLUGIN_VERSION,
           EXTENSION_NAME + " - Information & Help", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE)
 
       if (result == JOptionPane.OK_OPTION) {
@@ -590,21 +596,21 @@ public class ImgInspector {
 
   static class ImageViewerListener<T extends Component> extends MouseAdapter {
 
-    T component
-    Timer viewerTimer
-
-    ActionListener timerAction
+    private T component
+    private Timer viewerTimer
     private ViewerPopup popup
 
     public ImageViewerListener(T component, ViewerPopup popup, Predicate<T> isValidImage) {
       this.component = component
       this.popup = popup
       popup.hookToComponent(component)
+      this.viewerTimer = new Timer(200, null)
 
       ActionListener timerAction = new ActionListener() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+              viewerTimer.stop()
               Point pos = component.getMousePosition()
               if (pos == null) {
                 return
@@ -627,12 +633,10 @@ public class ImgInspector {
             }
           }
 
-      this.viewerTimer = new Timer(500, timerAction)
+      this.viewerTimer.addActionListener(timerAction)
 
       for (MouseListener l : popup.getMouseListeners()) {
-
         if (PopupAdapter.class.isInstance(l)) {
-          // l instanceof PopupAdapter
           popup.removeMouseListener(l)
           break
         }
@@ -642,10 +646,6 @@ public class ImgInspector {
 
     @Override
     public void mouseExited(MouseEvent e) {
-      if (viewerTimer != null && viewerTimer.isRunning()) {
-        viewerTimer.stop()
-      }
-
       Point p = java.awt.MouseInfo.getPointerInfo().getLocation()
       // SwingUtilities.convertPointFromScreen(p, popup);
 
