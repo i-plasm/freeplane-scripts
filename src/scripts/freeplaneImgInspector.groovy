@@ -5,7 +5,7 @@ package scripts
 /*
  * Info & Discussion: https://github.com/freeplane/freeplane/discussions/1948
  *
- * Last Update: 2024-09-18
+ * Last Update: 2024-09-28
  *
  * ---------
  *
@@ -34,7 +34,10 @@ import java.awt.Component
 import java.awt.Desktop
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.awt.Font
+import java.awt.Frame
 import java.awt.GraphicsConfiguration
+import java.awt.GraphicsEnvironment
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Insets
@@ -47,6 +50,8 @@ import java.awt.datatransfer.StringSelection
 import java.awt.event.AWTEventListener
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
+import java.awt.event.HierarchyEvent
+import java.awt.event.HierarchyListener
 import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -55,8 +60,10 @@ import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
 import java.awt.event.WindowFocusListener
 import java.util.function.Predicate
+import java.util.stream.Stream
 import javax.swing.AbstractAction
 import javax.swing.Action
+import javax.swing.BorderFactory
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JFrame
@@ -91,7 +98,7 @@ new ImgInspector().init()
 public class ImgInspector {
 
   private static final String EXTENSION_NAME = "ImgInspector"
-  private static final String PLUGIN_VERSION = "v0.8.5"
+  private static final String PLUGIN_VERSION = "v0.8.6"
 
   private ImgAWTEventListener<BitmapViewerComponent> listener
 
@@ -109,6 +116,7 @@ public class ImgInspector {
   static class ImgAWTEventListener<T> implements AWTEventListener {
     private ViewerPopup popup = createViewerPopup()
     private Class<T> clazz
+    private JPopupMenu externalPopupShown = null
 
     public ImgAWTEventListener(Class<T> clazz) {
       this.clazz = clazz
@@ -116,6 +124,13 @@ public class ImgInspector {
 
     @Override
     public void eventDispatched(AWTEvent e) {
+      // Validating if external popup is showing
+      if (e.getSource() instanceof JPopupMenu && !(e.getSource() instanceof ViewerPopup)) {
+        externalPopupShown = (JPopupMenu) e.getSource()
+      } else if (externalPopupShown != null && !externalPopupShown.isShowing()) {
+        externalPopupShown = null
+      }
+
       if (!(e.getSource() instanceof Component)) {
         return
       }
@@ -130,14 +145,20 @@ public class ImgInspector {
 
       Component component = (Component) e.getSource()
 
+      Optional<MouseListener> viewerListener =
+          popup.hookedComponent != null
+          ? Stream.of(popup.hookedComponent.getMouseListeners())
+          .filter{it -> it instanceof ImageViewerListener}.findFirst()
+          : Optional.empty()
+
       if (popup.hookedComponent != null && popup.hookedComponent != component) {
-        for (MouseListener l : popup.hookedComponent.getMouseListeners()) {
-          if (l instanceof ImageViewerListener) {
-            popup.hookedComponent.removeMouseListener(l)
-            break
-          }
-        }
+        viewerListener.ifPresent{it -> popup.hookedComponent.removeMouseListener(it)}
       } else if (popup.hookedComponent != null && popup.hookedComponent == component) {
+        if (externalPopupShown != null) {
+          viewerListener.ifPresent{it -> ((ImageViewerListener) it).deactivatePopup()}
+        } else {
+          viewerListener.ifPresent{it -> ((ImageViewerListener) it).activatePopup()}
+        }
         return
       }
 
@@ -145,6 +166,11 @@ public class ImgInspector {
           new ImageViewerListener<BitmapViewerComponent>((BitmapViewerComponent) component, popup,
           getImgAvailablePredicate())
       component.addMouseListener(bitmapViewerlistener)
+      if (externalPopupShown != null) {
+        bitmapViewerlistener.deactivatePopup()
+      } else {
+        bitmapViewerlistener.activatePopup()
+      }
       bitmapViewerlistener.mouseEntered(
           new MouseEvent(component, -1, System.currentTimeMillis(), 0, 0, 0, 0, 0, 0, false, 0))
     }
@@ -156,35 +182,46 @@ public class ImgInspector {
     private ViewerPopup createViewerPopup() {
       return new ViewerPopup()
     }
-
-    public static boolean isWindows() {
-      String os = System.getProperty("os.name").toLowerCase()
-      return os.startsWith("windows")
-    }
   }
 
   private static class ViewerPopup extends JPopupMenu {
     public static final String PREVIEW_COMP_NAME = "img_preview_hover"
 
-    HoverButton btnPreview
-    Component hookedComponent
+    private HoverButton btnPreview
+    protected Component hookedComponent
     private String previousImage
     private String currentImage
     private String imgBackground
+    private static boolean isPreviewBeingLoaded
+    private static final Insets CANONICAL_FRAME_INSETS = getCanonicalFrameInsets()
 
     private ViewerPopup() {
       GridBagConstraints c = new GridBagConstraints()
       this.setLayout(new GridBagLayout())
 
-      // unicode info button
-      HoverButton btnInfo = new HoverButton("<html><p><font size=12>&#128712;</font></p></html>")
-      btnInfo.setToolTipText("Information & Help")
-      // unicode opposition button
-      HoverButton btnCopyPath = new HoverButton("<html><p><font size=12>&#9741;</font></p></html>")
-      btnCopyPath.setToolTipText("Copy Image URL")
+      HoverButton btnInfo = null
+      HoverButton btnCopyPath
 
-      // unicode Left-Pointing Magnifying Glass button
-      btnPreview = new HoverButton("<html><p><font size=12>&#128269;</font></p></html>")
+      // unicode opposition button
+      btnCopyPath = new HoverButton("<html><p><font size=12>&#9741;</font></p></html>")
+
+      if (isWindowsOS()) {
+        // unicode info button
+        btnInfo = new HoverButton("<html><p><font size=12>&#128712;</font></p></html>")
+
+        // unicode Left-Pointing Magnifying Glass button
+        btnPreview = new HoverButton("<html><p><font size=12>&#128269;</font></p></html>")
+      } else {
+        btnInfo = new HoverButton("<html><p><font size=12>&nbsp;?&nbsp;</font></p></html>")
+
+        // unicode Greek Letter Qoppa
+        //btnPreview = new HoverButton("\u03D8")
+        //btnPreview.setFont(btnPreview.getFont().deriveFont(Font.BOLD | Font.ITALIC))
+        btnPreview = new HoverButton("<html><p><font size=12><i>&nbsp;&#984;&nbsp;</i></font></p></html>")
+      }
+
+      btnInfo.setToolTipText("Information & Help")
+      btnCopyPath.setToolTipText("Copy Image URL")
 
       btnCopyPath.addActionListener{ l ->
         copyURL()
@@ -220,10 +257,40 @@ public class ImgInspector {
       btnPreview.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-              JFrame hoverWindow = createHoverWindow(ViewerPopup.this.getCurrentImage(),
+              // Workaround for focus loss while loading in Linux
+              if (isPreviewBeingLoaded) {
+                return
+              }
+              isPreviewBeingLoaded = true
+              UndecoratedPreviewFrame hoverWindow = createHoverWindow(ViewerPopup.this.getCurrentImage(),
                   ViewerPopup.this.getImgBackground(), ViewerPopup.this.getSuggstedPreviewLocation(),
-                  SwingUtilities.getWindowAncestor(ViewerPopup.this).getGraphicsConfiguration())
+                  SwingUtilities.getWindowAncestor(ViewerPopup.this.getHookedComponent()).getGraphicsConfiguration())
+
+              // The small size is temporary. We maximize only after it is visible to avoid glitches on certain environments.
+              if (!isWindowsOS() && hoverWindow.isMaximized()) {
+                hoverWindow.setSize(2,2)
+              }
+
+              if (!hoverWindow.isMaximized()) {
+                hoverWindow.getRootPane().setBorder(BorderFactory.createMatteBorder(1, 1, 1, 1, new Color(0, 0, 255, 150)))
+              }
               hoverWindow.setVisible(true)
+
+              SwingUtilities.invokeLater{
+                // Windows excluded due to bug: https://bugs.java.com/bugdatabase/view_bug?bug_id=4737788
+                // Necessary for at least some Linux OS, where true screen insets can not be obtained under multi-monitor set up
+                if (!isWindowsOS() && hoverWindow.isMaximized()) {
+                  hoverWindow.setExtendedState(Frame.MAXIMIZED_BOTH)
+                }
+
+                SwingUtilities.invokeLater{
+                  ViewerPopup.this.setVisible(false)
+
+                  SwingUtilities.invokeLater{
+                    isPreviewBeingLoaded = false
+                  }
+                }
+              }
             }
           })
 
@@ -357,11 +424,17 @@ public class ImgInspector {
       return bounds
     }
 
+    private static Insets getCanonicalFrameInsets() {
+      JFrame frame = new JFrame()
+      frame.pack()
+      return frame.getInsets()
+    }
+
     static JFrame createHoverWindow(String imgUrl, String bgColor, Point suggestedLocation,
         GraphicsConfiguration config) {
       String html = imageHTMLWithBgColor(imgUrl, bgColor)
       JLabel label = new JLabel(html)
-      JFrame frame
+      UndecoratedPreviewFrame frame
       JFrame dummyFrame = new JFrame(config)
       // frame.setName(PREVIEW_COMP_NAME);
 
@@ -370,11 +443,18 @@ public class ImgInspector {
       dummyFrame.pack()
       Rectangle maxBounds = getMaxWindowBounds(config)
       Rectangle dummyFrameBounds = dummyFrame.getBounds()
-      boolean isImgShowingFully = dummyFrame.getBounds().width < maxBounds.width && dummyFrame.getBounds().height < maxBounds.height
+      Rectangle fullScreenBounds = config.getBounds()
+
+      boolean isImgShowingFully = dummyFrameBounds.width < maxBounds.width &&
+          (dummyFrameBounds.height - CANONICAL_FRAME_INSETS.top) < maxBounds.height
+      // Defensive workaround for possible issues when calculating screen insets in some environments
+      boolean shouldApplyOversizePrevention = dummyFrameBounds.width > fullScreenBounds.width*0.9 ||
+          (dummyFrameBounds.height - CANONICAL_FRAME_INSETS.top) > fullScreenBounds.height*0.9
       dummyFrame.dispose()
 
-      if (!isImgShowingFully) {
-        frame = new JFrame(config)
+      if (!isImgShowingFully || shouldApplyOversizePrevention) {
+        frame = new UndecoratedPreviewFrame(config)//new JFrame(config)
+        frame.setMaximized(true)
         // frame.setName(PREVIEW_COMP_NAME);
         final JPanel panel = new JPanel() {
               @Override
@@ -405,9 +485,11 @@ public class ImgInspector {
         label.addMouseListener(new MouseAdapter() {
               @Override
               public void mouseClicked(MouseEvent e) {
+                GraphicsConfiguration defaultConfig = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration()
                 int width = frame.getWidth()
-                int height = frame.getHeight()
-                Point location = frame.getLocation()
+                int height = isWindowsOS()? frame.getHeight() : frame.getHeight() - CANONICAL_FRAME_INSETS.top
+                Point location = isWindowsOS()? frame.getLocation() : new Point((int) frame.getLocation().x,
+                    (int) frame.getLocation().y + (int) CANONICAL_FRAME_INSETS.top*2 - Toolkit.getDefaultToolkit().getScreenInsets(defaultConfig).top)
                 frame.setVisible(false)
                 frame.dispose()
                 previewFullSize(imgUrl, bgColor, width, height, location)
@@ -430,6 +512,10 @@ public class ImgInspector {
 
               @Override
               public void windowDeactivated(WindowEvent e) {
+                // Workaround to sometimes being autoclosed before finishing loading + maximization
+                if (isPreviewBeingLoaded) {
+                  return
+                }
                 if (frame.isVisible()) {
                   frame.setVisible(false)
                   frame.dispose()
@@ -439,6 +525,10 @@ public class ImgInspector {
         frame.addWindowFocusListener(new WindowFocusListener() {
               @Override
               public void windowLostFocus(WindowEvent e) {
+                // Workaround to sometimes being autoclosed before finishing loading + maximization
+                if (isPreviewBeingLoaded) {
+                  return
+                }
                 if (frame.isVisible()) {
                   frame.setVisible(false)
                   frame.dispose()
@@ -452,23 +542,30 @@ public class ImgInspector {
         frame.add(scrollPane)
         frame.setUndecorated(true)
         // TODO groovy cast to int
-        frame.setSize((int) maxBounds.width, (int) maxBounds.height)
+        frame.setSize((int) maxBounds.width, isWindowsOS()? (int) maxBounds.height :
+            (int) maxBounds.height - (int) CANONICAL_FRAME_INSETS.top)
         // frame.pack();
         // TODO groovy cast to int
         frame.setLocation((int) maxBounds.x, (int) maxBounds.y)
       } else {
-        frame = new JFrame(config)
+        frame = new UndecoratedPreviewFrame(config)//new JFrame(config)
+        frame.setMaximized(false)
         // frame.setName(PREVIEW_COMP_NAME);
         frame.setUndecorated(true)
         frame.setLayout(new FlowLayout(FlowLayout.CENTER))
         frame.add(label)
 
+        // Correction due to dummy frame title bar
+        int yCorrection = CANONICAL_FRAME_INSETS.top == 0 ? 25 : CANONICAL_FRAME_INSETS.top
+        if (!isMacOS()) {
+          yCorrection += 10
+        }
         int x = maxBounds.x + maxBounds.width > suggestedLocation.x + dummyFrame.getWidth()
             ? suggestedLocation.x
             : maxBounds.x + maxBounds.width - dummyFrame.getWidth()
         int y = maxBounds.y + maxBounds.height > suggestedLocation.y + dummyFrame.getHeight()
             ? suggestedLocation.y
-            : maxBounds.y + maxBounds.height - dummyFrame.getHeight()
+            : maxBounds.y + maxBounds.height - dummyFrame.getHeight() + yCorrection
 
         frame.setLocation(x, y)
         frame.pack()
@@ -557,13 +654,33 @@ public class ImgInspector {
     }
   }
 
+  static class UndecoratedPreviewFrame extends JFrame {
+    private boolean maximized
+
+    public UndecoratedPreviewFrame(GraphicsConfiguration config)  {
+      super(config)
+      this.maximized = maximized
+    }
+
+    public boolean isMaximized() {
+      return maximized
+    }
+
+    public void setMaximized(boolean maximized) {
+      this.maximized = maximized
+    }
+  }
+
   static class HoverButton extends JButton {
+    private static final Font MODEL_FONT = new JButton().getFont()
+
     public HoverButton(String text) {
       super(text)
       setBorderPainted(false)
       setBackground(UIManager.getColor("control"))
       setBorder(new EmptyBorder(5, 5, 5, 5))
       setFocusable(false)
+      setFont(MODEL_FONT.deriveFont(40f).deriveFont(Font.PLAIN))
 
       Color selColor = UIManager.getColor("MenuItem.selectionBackground")
 
@@ -591,6 +708,18 @@ public class ImgInspector {
             @Override
             public void ancestorAdded(AncestorEvent event) {}
           })
+
+      addHierarchyListener(new HierarchyListener() {
+            @Override
+            public void hierarchyChanged(HierarchyEvent e) {
+              if ((e.getChangeFlags() & HierarchyEvent.DISPLAYABILITY_CHANGED) != 0 ||
+                  (e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0) {
+                if (!e.getComponent().isDisplayable()) {
+                  setBackground(UIManager.getColor("control"))
+                }
+              }
+            }
+          })
     }
   }
 
@@ -599,6 +728,7 @@ public class ImgInspector {
     private T component
     private Timer viewerTimer
     private ViewerPopup popup
+    private boolean deactivatePopup = false
 
     public ImageViewerListener(T component, ViewerPopup popup, Predicate<T> isValidImage) {
       this.component = component
@@ -611,6 +741,10 @@ public class ImgInspector {
             @Override
             public void actionPerformed(ActionEvent e) {
               viewerTimer.stop()
+
+              if (deactivatePopup) {
+                return
+              }
               Point pos = component.getMousePosition()
               if (pos == null) {
                 return
@@ -642,6 +776,14 @@ public class ImgInspector {
         }
       }
       popup.addMouseListener(new PopupAdapter())
+    }
+
+    public void deactivatePopup() {
+      deactivatePopup = true
+    }
+
+    public void activatePopup() {
+      deactivatePopup = false
     }
 
     @Override
@@ -692,5 +834,17 @@ public class ImgInspector {
         }
       }
     }
+  }
+
+  // ----UTIL METHODS
+
+  public static boolean isWindowsOS() {
+    String os = System.getProperty("os.name").toLowerCase()
+    return os.startsWith("windows")
+  }
+
+  public static boolean isMacOS() {
+    String os = System.getProperty("os.name").toLowerCase()
+    return os.startsWith("mac os")
   }
 }
