@@ -4,7 +4,7 @@ package scripts
 /*
  * Info & Discussion: https://github.com/freeplane/freeplane/discussions/1534
  *
- * Last Update: 2024-05-20
+ * Last Update: 2024-08-09
  *
  * ---------
  *
@@ -118,7 +118,7 @@ public class IntelliFlow {
   private static final String THREAD_PREFIX = "INTELLIFLOW_"
   private static final String MENU_TEXT = "IntelliFlow"
   private static final String PLUGIN_NAME = "IntelliFlow"
-  private static final String PLUGIN_VERSION = "v0.7.2"
+  private static final String PLUGIN_VERSION = "v0.7.3"
 
   enum LaunchMode {
     ON_NODE, ON_TEXT_COMPONENT
@@ -1027,6 +1027,7 @@ public class IntelliFlow {
 
     private static final String MAIN_TEMPLATE = "main_template"
     private static final String TEMPLATE = "template"
+    private static final String CUSTOM_IMG_DIR = "image_dir"
     // public static boolean shouldMonitorExtProcess = false;
 
     private static String getUserDefinedEditorBinary() throws IOException {
@@ -1093,8 +1094,13 @@ public class IntelliFlow {
 
       Path imageDir = null
       try {
-        imageDir =
-            Files.createDirectories(Paths.get(mapDir.toPath().toString(), mapName + "_files"))
+        Optional<String> customDir = getUserCustomImagesDir()
+        if (customDir.isEmpty()) {
+          imageDir =
+              Files.createDirectories(Paths.get(mapDir.toPath().toString(), mapName + "_files"))
+        } else {
+          imageDir = Files.createDirectories(Paths.get(customDir.get(), ""))
+        }
       } catch (IOException e) {
         e.printStackTrace()
       }
@@ -1564,6 +1570,19 @@ public class IntelliFlow {
       } catch (IOException e1) {
       }
       return Stream.empty()
+    }
+
+    private static Optional<String> getUserCustomImagesDir() {
+      String userDir = FreeplaneTools.getFreeplaneUserdir()
+      try {
+        List<String> lines =
+            Files.readAllLines(Paths.get(userDir, "scripts", SKETCHER_CONFIG_FILE))
+
+        return lines.stream()
+            .filter{it -> !it.trim().equals("") && it.trim().startsWith(CUSTOM_IMG_DIR + "=")}
+            .findFirst().map{it -> it.trim().substring(it.trim().indexOf("=") + 1)}
+      } catch (IOException e1) {}
+      return Optional.ofNullable(null)
     }
 
     private static String prevalidateSketcher() {

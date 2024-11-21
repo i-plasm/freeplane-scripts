@@ -1,4 +1,4 @@
-// @ExecutionModes({ON_SELECTED_NODE="/main_menu/i-plasm/freeplaneNotifier"})
+// @ExecutionModes({ON_SINGLE_NODE="/main_menu/i-plasm/freeplaneNotifier"})
 package scripts
 
 /**
