@@ -1,7 +1,7 @@
 // @ExecutionModes({ON_SINGLE_NODE="/main_menu/i-plasm/miscUtils"})
 
 /*
- * Info & Discussion: https://github.com/freeplane/freeplane/issues/116
+ * Info & Discussion: https://github.com/freeplane/freeplane/issues/116#issuecomment-2498343102
  *
  * Last Update: 2024-11-25
  *
@@ -144,7 +144,7 @@ public class NodeOverwriteWarn {
   }
 
   private void browseToDiscussion() {
-    String uri = "https://github.com/freeplane/freeplane/issues/116"
+    String uri = "https://github.com/freeplane/freeplane/issues/116#issuecomment-2498343102"
     try {
       browseViaDesktop(new URI(uri))
     } catch (Exception e) {
