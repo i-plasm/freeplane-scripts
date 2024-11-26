@@ -3,7 +3,7 @@
 /*
  * Info & Discussion: https://github.com/freeplane/freeplane/issues/116#issuecomment-2498343102
  *
- * Last Update: 2024-11-25
+ * Last Update: 2024-11-26
  *
  * ---------
  *
