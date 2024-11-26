@@ -74,9 +74,9 @@ public class NodeOverwriteWarn {
   public static final String KEEP_WARNING ="Keep warning"
 
   private static final String[] OPTIONS = [
+    KEEP_WARNING,
     FIVE_MINS,
-    TEN_MINS,
-    KEEP_WARNING
+    TEN_MINS
   ]
   private static final String GO_TO_DISCUSSION ="Go to github discussion"
   private static final String REACTIVATE_WARNING ="Reactivate warnings"
