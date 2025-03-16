@@ -3,7 +3,7 @@
 /*
  * Info & Discussion: https://github.com/freeplane/freeplane/issues/116#issuecomment-2498343102
  *
- * Last Update: 2024-11-26
+ * Last Update: 2025-01-09
  *
  * ---------
  *
@@ -71,7 +71,7 @@ public class NodeOverwriteWarn {
   private static final String PLUGIN_NAME ="OverwriteMonitor"
   private static final String FIVE_MINS = "5 mins"
   private static final String TEN_MINS = "10 mins"
-  public static final String KEEP_WARNING ="Keep warning"
+  private static final String KEEP_WARNING ="Keep warning"
 
   private static final String[] OPTIONS = [
     KEEP_WARNING,
@@ -86,8 +86,11 @@ public class NodeOverwriteWarn {
     GO_TO_DISCUSSION
   ]
 
-  private static final WARNING_ACTIVE_COLOR = new Color(204, 51, 153)
-  private static final WARNING_INACTIVE_COLOR = new Color(51, 204, 51)
+  private static final Color WARNING_ACTIVE_COLOR = new Color(204, 51, 153)
+  private static final Color WARNING_INACTIVE_COLOR = new Color(51, 204, 51)
+  private static final String FREEPLANE_ON_KEY_TYPE_PROPERTY = "key_type_action"
+  private static final String FREEPLANE_ON_KEY_TYPE_DO_NOTHING = "IGNORE"
+  private static final String FREEPLANE_ON_KEY_TYPE_OVERWRITE_CONTENT = "EDIT_CURRENT"
 
   private final JButton indicatorButton
   private final Timer timer
@@ -97,6 +100,8 @@ public class NodeOverwriteWarn {
   private ContainerListener containerListener = createContainerListener()
 
   public NodeOverwriteWarn() {
+    setFreeplaneProperty(FREEPLANE_ON_KEY_TYPE_PROPERTY, FREEPLANE_ON_KEY_TYPE_DO_NOTHING)
+
     Controller.currentController.mapViewManager.addMapViewChangeListener(mapViewChangeListener)
     //changeFreeplaneEditMode(true)
 
@@ -108,6 +113,7 @@ public class NodeOverwriteWarn {
     }
 
     timer = new Timer(0, {
+      setFreeplaneProperty(FREEPLANE_ON_KEY_TYPE_PROPERTY, FREEPLANE_ON_KEY_TYPE_DO_NOTHING)
       indicatorButton.setBackground(WARNING_ACTIVE_COLOR)
     })
     timer.setRepeats(false)
@@ -126,6 +132,7 @@ public class NodeOverwriteWarn {
       }
       if (REACTIVATE_WARNING.equals(HELP_OPTIONS[choice])) {
         if (!isWarningActive()) {
+          setFreeplaneProperty(FREEPLANE_ON_KEY_TYPE_PROPERTY, FREEPLANE_ON_KEY_TYPE_DO_NOTHING)
           //changeFreeplaneEditMode(true)
           timer.setInitialDelay(0)
           timer.restart()
@@ -227,6 +234,8 @@ public class NodeOverwriteWarn {
 
                 if (result >= 0) {
                   if (!OPTIONS[result].equals(KEEP_WARNING)) {
+                    setFreeplaneProperty(FREEPLANE_ON_KEY_TYPE_PROPERTY, FREEPLANE_ON_KEY_TYPE_OVERWRITE_CONTENT)
+
                     indicatorButton.setBackground(WARNING_INACTIVE_COLOR)
                     //changeFreeplaneEditMode(false)
 
@@ -294,5 +303,9 @@ public class NodeOverwriteWarn {
     if (Desktop.isDesktopSupported() && desktop.isSupported(Desktop.Action.BROWSE)) {
       desktop.browse(uri)
     }
+  }
+
+  public static void setFreeplaneProperty(String property, String value) {
+    ResourceController.getResourceController().setProperty(property, value)
   }
 }
