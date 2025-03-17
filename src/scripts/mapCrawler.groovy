@@ -3,9 +3,9 @@
 package scripts
 
 /*
- * Info & Discussion:
+ * Info & Discussion: https://github.com/freeplane/freeplane/discussions/2344
  *
- * Last Update: 2025-03-16
+ * Last Update: 2025-03-17
  *
  * ---------
  *
@@ -711,9 +711,9 @@ class FreeplaneMapCrawler {
     floatingPopup.add(contentsMenuItem)
 
     String visitWebsite = MenuHelper.floatingMenuItemUnderlinedActionHTML("Discussion & Updates:",
-        "")
+        "https://github.com/freeplane/freeplane/discussions/2344")
     JMenuItem visitWebsiteItem =
-        createLinkMenuItem("", visitWebsite)
+        createLinkMenuItem("https://github.com/freeplane/freeplane/discussions/2344", visitWebsite)
     floatingPopup.add(visitWebsiteItem)
 
     floatingPopup.show(comp, 0, 0)
@@ -729,9 +729,9 @@ class FreeplaneMapCrawler {
     floatingPopup.add(contentsMenuItem)
 
     String visitWebsite = MenuHelper.floatingMenuItemUnderlinedActionHTML("Discussion & Updates:",
-        "")
+        "https://github.com/freeplane/freeplane/discussions/2344")
     JMenuItem visitWebsiteItem =
-        createLinkMenuItem("", visitWebsite)
+        createLinkMenuItem("https://github.com/freeplane/freeplane/discussions/2344", visitWebsite)
     floatingPopup.add(visitWebsiteItem)
     floatingPopup.add(visitWebsiteItem)
 
