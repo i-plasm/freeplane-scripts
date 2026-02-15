@@ -2006,7 +2006,7 @@ public class IntelliFlow {
     public static void altOpenOtherOS(URI uriToTry, boolean shouldWaitFor) throws IOException {
       try {
         IOUtils.openViaOSCommand(uriToTry.toString(),
-            getProperty("default_browser_command_other_os"), shouldWaitFor)
+            "xdg-open", shouldWaitFor)
       } catch (IOException e) {
         System.err.println("Caught: " + e)
         throw new IOException(e)
@@ -2020,7 +2020,7 @@ public class IntelliFlow {
       }
 
       try {
-        IOUtils.openViaOSCommand(uriString, getProperty("default_browser_command_mac"),
+        IOUtils.openViaOSCommand(uriString, "open",
             shouldWaitFor)
       } catch (IOException e) {
         System.err.println("Caught: " + e)
