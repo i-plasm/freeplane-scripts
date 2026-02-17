@@ -4,7 +4,7 @@ package scripts
 /*
  * Info & Discussion: https://github.com/freeplane/freeplane/discussions/1534
  *
- * Last Update: 2024-08-09
+ * Last Update: 2026-02-15
  *
  * ---------
  *
@@ -118,7 +118,7 @@ public class IntelliFlow {
   private static final String THREAD_PREFIX = "INTELLIFLOW_"
   private static final String MENU_TEXT = "IntelliFlow"
   private static final String PLUGIN_NAME = "IntelliFlow"
-  private static final String PLUGIN_VERSION = "v0.7.3"
+  private static final String PLUGIN_VERSION = "v0.7.3.2"
 
   enum LaunchMode {
     ON_NODE, ON_TEXT_COMPONENT
