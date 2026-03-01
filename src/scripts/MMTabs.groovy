@@ -3,7 +3,7 @@
 package scripts
 
 /*
- * Info & Discussion:
+ * Info & Discussion: https://github.com/freeplane/freeplane/discussions/2843
  *
  * Last Update: 2026-02-28
  *
@@ -169,7 +169,7 @@ class FreeplaneMapTabs {
   }
 
   private static void displayAbout(Component comp) {
-    String discussionUrl = ""
+    String discussionUrl = "https://github.com/freeplane/freeplane/discussions/2843"
     MenuHelper.FloatingMsgPopup floatingPopup = new MenuHelper.FloatingMsgPopup()
 
     JMenuItem contentsMenuItem = MenuHelper.createHeaderNoticeMenuItem("<b>" + PLUGIN_NAME +
